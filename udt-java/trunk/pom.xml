@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>udt-java</groupId>
+  <artifactId>udt-java</artifactId>
+  <packaging>jar</packaging>
+  <name>UDT Java implementation</name>
+  <version>0.1-SNAPSHOT</version>
+  <url>http://sourceforge.net/projects/udt-java</url>
+  <developers>
+    <developer>
+      <name>Bernd Schuller</name>
+      <email>bschuller at users.sourceforge.net</email>
+      <organization>Forschungszentrum Juelich</organization>
+      <organizationUrl>http://www.fz-juelich.de</organizationUrl>
+    </developer>
+    <developer>
+      <name>Melanie Ngoatchou</name>
+    </developer>
+  </developers>
+  <contributors/>
+  <scm>
+    <connection>scm:svn:http://udt-java.svn.sourceforge.net/svnroot/udt-java/udt-java/trunk</connection>
+    <developerConnection>scm:svn:https://udt-java.svn.sourceforge.net/svnroot/udt-java/udt-java/trunk</developerConnection>
+  </scm>
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.1</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>1.5</source>
+          <target>1.5</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>**/performance/**</exclude>
+          </excludes>
+          <forkMode>pertest</forkMode>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-release-plugin</artifactId>
+        <configuration>
+          <tagBase>https://udt-java.svn.sourceforge.net/svnroot/udt-java/udt-java/tags</tagBase>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <inherited>true</inherited>
+        <executions>
+          <execution>
+            <id>source-generation</id>
+            <phase>verify</phase>
+            <!-- makes sure the source jar is build before install or compile -->
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <inherited>true</inherited>
+          </execution>
+        </executions>
+        <configuration>
+          <attach>true</attach>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <descriptors>
+            <descriptor>src/main/assembly/dep.xml</descriptor>
+          </descriptors>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
