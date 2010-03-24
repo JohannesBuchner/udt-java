@@ -1,6 +1,10 @@
 #!/bin/sh
 
 #
+# helper script for using UDT-Java in UNICORE
+#
+
+#
 #Installation Directory
 #
 dir=`dirname $0`
@@ -27,10 +31,10 @@ INST=${INST:-.}
 JAVA=java
 
 #location of udt.jar
-CP=$INST/lib/udt.jar
+CP=$INST/lib/udt*.jar
 
 #memory for the VM
-MEM=-Xmx128
+MEM=-Xmx128m
 
 $JAVA $MEM -cp $CP udt.unicore.FufexReceive $*
 

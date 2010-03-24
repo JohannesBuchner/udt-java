@@ -4,3 +4,32 @@
 
 This is a native Java implementation of the UDT protocol.
 
+
+#
+# Sample applications
+#
+
+We provide "send-file" and "receive-file" scripts that work analogously to their C++ counterparts.
+
+To start a file "server",
+
+  bin/send-file <server_port>
+  
+To download a file from the server,
+
+  bin/receive_file <server_host> <server_port> <remote_filename> <local_filename>
+  
+
+#
+# Setting up a development environment using Eclipse
+#
+
+You will need Apache Maven from http://maven.apache.org
+
+To generate Eclipse project files,
+
+  mvn eclipse:eclipse
+  
+Then, import the project into your workspace.
+
+  
