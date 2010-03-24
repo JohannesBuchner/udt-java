@@ -36,6 +36,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import udt.UDTPacket;
+import udt.UDTSession;
 
 public abstract class ControlPacket implements UDTPacket{
 	
@@ -52,6 +53,8 @@ public abstract class ControlPacket implements UDTPacket{
 	
 	protected byte[] controlInformation;
     
+	private UDTSession session;
+	
 	public ControlPacket(){
     	
     }
@@ -174,6 +177,18 @@ public abstract class ControlPacket implements UDTPacket{
 	
 	public boolean forSender(){
 		return true;
+	}
+	
+	public boolean isConnectionHandshake(){
+		return false;
+	}
+	
+	public UDTSession getSession() {
+		return session;
+	}
+
+	public void setSession(UDTSession session) {
+		this.session = session;
 	}
 	
 	public static enum ControlPacketType {

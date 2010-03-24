@@ -37,14 +37,12 @@ import java.net.UnknownHostException;
 
 public class Destination {
 
-	private String host;
-	private int port;
-	private InetAddress address;
+	private final int port;
+
+	private final InetAddress address;
 	
-	public Destination(String host, int port){
-		this.host=host;
-		this.port=port;
-	}
+	//UDT socket ID of the peer
+	private long socketID;
 	
 	public Destination(InetAddress address, int port){
 		this.address=address;
@@ -52,17 +50,55 @@ public class Destination {
 	}
 	
 	public InetAddress getAddress()throws UnknownHostException{
-		if(address!=null)return address;
-		
-		return InetAddress.getByName(host);
+		return address;
 	}
 	
 	public int getPort(){
 		return port;
 	}
 	
-	public String toString(){
-		if(address!=null)return("Destination: "+address.getHostName()+" port="+port);
-		return "Destination host="+host+" port="+port;
+	public long getSocketID() {
+		return socketID;
 	}
+
+	public void setSocketID(long socketID) {
+		this.socketID = socketID;
+	}
+
+	public String toString(){
+		return("Destination: "+address.getHostName()+" port="+port+" socketID="+socketID);
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((address == null) ? 0 : address.hashCode());
+		result = prime * result + port;
+		result = prime * result + (int) (socketID ^ (socketID >>> 32));
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Destination other = (Destination) obj;
+		if (address == null) {
+			if (other.address != null)
+				return false;
+		} else if (!address.equals(other.address))
+			return false;
+		if (port != other.port)
+			return false;
+		if (socketID != other.socketID)
+			return false;
+		return true;
+	}
+	
+	
 }

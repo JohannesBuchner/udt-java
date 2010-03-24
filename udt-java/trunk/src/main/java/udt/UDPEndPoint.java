@@ -39,6 +39,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.SynchronousQueue;
@@ -46,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import udt.packets.ConnectionHandshake;
 import udt.packets.Destination;
 import udt.packets.PacketFactory;
 import udt.util.UDTThreadFactory;
@@ -64,11 +66,11 @@ public class UDPEndPoint {
 
 	private final DatagramSocket dgSocket;
 
-	//remote destinations
-	private final Map<Long,Destination>destinations;
-
-	//sessions
+	//active sessions keyed by socket ID
 	private final Map<Long,UDTSession>sessions;
+
+	//connecting sessions keyed by peer destination
+	private final Map<Destination,UDTSession>clientSessions;
 
 	//last received packet
 	private UDTPacket lastPacket;
@@ -82,7 +84,7 @@ public class UDPEndPoint {
 	private volatile boolean stopped=false;
 
 	public static final int DATAGRAM_SIZE=61440;
-	
+
 	/**
 	 * bind to any local port on the given host address
 	 * @param localAddress
@@ -92,7 +94,7 @@ public class UDPEndPoint {
 	public UDPEndPoint(InetAddress localAddress)throws SocketException, UnknownHostException{
 		this(localAddress,0);
 	}
-	
+
 	/**
 	 * Bind to the given address and port
 	 * @param localAddress
@@ -108,8 +110,8 @@ public class UDPEndPoint {
 		}
 		if(localPort>0)this.port = localPort;
 		else port=dgSocket.getLocalPort();
-		destinations=new ConcurrentHashMap<Long, Destination>();
 		sessions=new ConcurrentHashMap<Long, UDTSession>();
+		clientSessions=new ConcurrentHashMap<Destination, UDTSession>();
 		sessionHandoff=new SynchronousQueue<UDTSession>();
 		//set a time out to avoid blocking in doReceive()
 		dgSocket.setSoTimeout(1000);
@@ -192,17 +194,24 @@ public class UDPEndPoint {
 		return lastPacket;
 	}
 
-	public void addDestination(Long destinationID, Destination address){
-		destinations.put(destinationID, address);
-		logger.info(toString()+" destination <"+destinationID+"> = "+address);
-	}
-
 	public void addSession(Long destinationID,UDTSession session){
 		sessions.put(destinationID, session);
 	}
 
+	public void addClientSession(Destination peer,UDTSession session){
+		clientSessions.put(peer, session);
+	}
+
+	public void removeClientSession(Destination peer){
+		clientSessions.remove(peer);
+	}
+
 	public UDTSession getSession(Long destinationID){
 		return sessions.get(destinationID);
+	}
+
+	public Collection<UDTSession> getSessions(){
+		return sessions.values();
 	}
 
 	/**
@@ -216,6 +225,9 @@ public class UDPEndPoint {
 		return sessionHandoff.poll(timeout, unit);
 	}
 
+
+	final DatagramPacket dp= new DatagramPacket(new byte[DATAGRAM_SIZE],DATAGRAM_SIZE);
+
 	/**
 	 * single receive, run in the receiverThread, see {@link #start()}
 	 * <ul>
@@ -227,42 +239,52 @@ public class UDPEndPoint {
 	 */
 	protected void doReceive()throws IOException{
 		try{
-			//handshake sequence will ensure that the buffer size
-			//need not be larger than this...
-			DatagramPacket dp= new DatagramPacket(new byte[DATAGRAM_SIZE],DATAGRAM_SIZE);
 			try{
 				//will block until a packet is received or timeout has expired
 				dgSocket.receive(dp);
 				Destination peer=new Destination(dp.getAddress(), dp.getPort());
 				int l=dp.getLength();
-				UDTPacket p=PacketFactory.createPacket(dp.getData(),l);
-				lastPacket=p;
+				UDTPacket packet=PacketFactory.createPacket(dp.getData(),l);
+				lastPacket=packet;
 
-				//dispatch
-				UDTSession session=sessions.get(p.getDestinationID());
-				if(session==null){
-					session=new ServerSession(dp,this);
-					addSession(p.getDestinationID(),session);
-					if(serverSocketMode){
-						sessionHandoff.put(session);
+				//handle connection handshake 
+				if(packet.isConnectionHandshake()){
+					UDTSession session=clientSessions.get(peer);
+					
+					if(session==null){
+						session=new ServerSession(dp,this);
+						addSession(session.getSocketID(),session);
+						//TODO need to check peer to avoid duplicate server session
+						if(serverSocketMode){
+							sessionHandoff.put(session);
+						}
+					}
+					peer.setSocketID(((ConnectionHandshake)packet).getSocketID());
+					session.received(packet,peer);
+				}
+
+				else{
+					//dispatch to existing session
+					UDTSession session=sessions.get(packet.getDestinationID());
+					if(session==null){
+						logger.warning("Unknown session <"+packet.getDestinationID()+"> requested from <"+peer+"> packet type "+packet.getClass().getName());
+					}
+					else{
+						session.received(packet,peer);
 					}
 				}
-				session.received(p,peer);
-				
 			}catch(SocketTimeoutException ste){
 				//can safely ignore... we will retry until the endpoint is stopped
 			}
-			
+
 		}catch(Exception ex){
-			logger.log(Level.WARNING, "Got: "+ex.getMessage());
+			logger.log(Level.WARNING, "Got: "+ex.getMessage(),ex);
 		}
 	}
 
 	protected void doSend(UDTPacket packet)throws IOException{
 		byte[]data=packet.getEncoded();
-		Long dID=packet.getDestinationID();
-		Destination dest=destinations.get(dID);
-		if(dest==null)throw new IOException("Destination "+dID+" unknown.");
+		Destination dest=packet.getSession().getDestination();
 		DatagramPacket dgp = new DatagramPacket(data, data.length,
 				dest.getAddress() , dest.getPort());
 		dgSocket.send(dgp);

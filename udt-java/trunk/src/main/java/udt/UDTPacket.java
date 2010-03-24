@@ -63,4 +63,8 @@ public interface UDTPacket {
 	 * @return
 	 */
 	public boolean forSender();
+	
+	public boolean isConnectionHandshake();
+	
+	public UDTSession getSession();
 }

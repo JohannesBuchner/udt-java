@@ -32,6 +32,7 @@
 
 package udt;
 
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 import udt.packets.Destination;
@@ -66,12 +67,11 @@ public abstract class UDTSession {
 	 * in-flight at a single time
 	 */
 	protected int flowWindowSize=128;
-	
 
 	/**
-	 * remote UDT entity
+	 * remote UDT entity (address and socket ID)
 	 */
-	private Destination destination;
+	protected final Destination destination;
 	
 	/**
 	 * local port
@@ -89,8 +89,14 @@ public abstract class UDTSession {
 	
 	protected Long initialSequenceNumber=null;
 	
-	public UDTSession(String description){
+	protected final long mySocketID;
+	
+	private final static AtomicLong nextSocketID=new AtomicLong(0);
+	
+	public UDTSession(String description, Destination destination){
 		statistics=new UDTStatistics(description);
+		mySocketID=nextSocketID.incrementAndGet();
+		this.destination=destination;
 	}
 	
 	public abstract void received(UDTPacket packet, Destination peer);
@@ -135,10 +141,6 @@ public abstract class UDTSession {
 	public Destination getDestination() {
 		return destination;
 	}
-
-	public void setDestination(Destination destination) {
-		this.destination = destination;
-	}
 	
 	public int getDatagramSize() {
 		return datagramSize;
@@ -167,7 +169,11 @@ public abstract class UDTSession {
 	public UDTStatistics getStatistics(){
 		return statistics;
 	}
-	
+
+	public long getSocketID(){
+		return mySocketID;
+	}
+
 	
 	public synchronized long getInitialSequenceNumber(){
 		if(initialSequenceNumber==null){

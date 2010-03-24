@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -91,7 +92,7 @@ public class UDTSender {
 	private volatile long largestSentSequenceNumber=-1;
 
 	//last acknowledge number, initialised to the initial sequence number
-	private long lastAckSequenceNumber=0;
+	private long lastAckSequenceNumber;
 
 	//size of the send queue
 	public static final int MAX_SIZE=1024;
@@ -102,9 +103,11 @@ public class UDTSender {
 		this.endpoint= endpoint;
 		this.session=session;
 		if(!session.isReady())throw new IllegalStateException("UDTSession is not ready.");
+		
 		senderLossList=new SenderLossList();
-		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(64,0.75f,2); 
+		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(MAX_SIZE,0.75f,2); 
 		sendQueue = new LinkedBlockingQueue<DataPacket>(MAX_SIZE);  
+		lastAckSequenceNumber=session.getInitialSequenceNumber();
 		start();
 	}
 
@@ -187,6 +190,7 @@ public class UDTSender {
 	}
 
 	protected void onAcknowledge(long ackNumber)throws IOException{
+		if(latch!=null)latch.countDown();
 		//need to remove all sequence numbers up the ack number from the sendBuffer
 		boolean removed=false;
 		for(long s=lastAckSequenceNumber;s<ackNumber;s++){
@@ -197,7 +201,7 @@ public class UDTSender {
 				unacknowledged.decrementAndGet();
 			}
 		}
-		lastAckSequenceNumber=ackNumber;
+		lastAckSequenceNumber=Math.max(lastAckSequenceNumber, ackNumber);		
 		//send ACK2 packet to the receiver
 		sendAck2(ackNumber);
 	}
@@ -222,7 +226,7 @@ public class UDTSender {
 	protected void sendKeepAlive()throws Exception{
 		KeepAlive keepAlive = new KeepAlive();
 		//TODO
-		keepAlive.setDestinationID(0L);
+		keepAlive.setSession(session);
 		endpoint.doSend(keepAlive);
 	}
 
@@ -230,6 +234,8 @@ public class UDTSender {
 		Acknowledgment2 ackOfAckPkt = new Acknowledgment2();
 		ackOfAckPkt.setDestinationID(0L);
 		ackOfAckPkt.setAckSequenceNumber(ackSequenceNumber);
+		ackOfAckPkt.setSession(session);
+		ackOfAckPkt.setDestinationID(session.getDestination().getSocketID());
 		endpoint.doSend(ackOfAckPkt);
 	}
 
@@ -309,8 +315,9 @@ public class UDTSender {
 	public long getLargestSentSequenceNumber(){
 		return largestSentSequenceNumber;
 	}
+	
 	boolean haveAcknowledgementFor(long sequenceNumber){
-		return !sendBuffer.containsKey(sequenceNumber);
+		return sequenceNumber<=lastAckSequenceNumber;
 	}
 
 	boolean isSentOut(long sequenceNumber){
@@ -320,7 +327,21 @@ public class UDTSender {
 	boolean haveLostPackets(){
 		return senderLossList.isEmpty();
 	}
+	
+	private volatile CountDownLatch latch=null;
+	
+	/**
+	 * wait for the next acknowledge
+	 * @throws InterruptedException
+	 */
+	public void waitForAck(long sequenceNumber)throws InterruptedException{
+		latch=new CountDownLatch(1);
+		while(!haveAcknowledgementFor(sequenceNumber)){
+			latch.await(10, TimeUnit.MILLISECONDS);
+		}
+	}
 
+	
 	public void stop(){
 		stopped=true;
 	}

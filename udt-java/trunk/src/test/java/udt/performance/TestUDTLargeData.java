@@ -19,16 +19,16 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=60;
+	int num_packets=200;
 	//how large is a single packet
-	int size=5*1024*1024;
+	int size=1*1024*1024;
 	
 	int TIMEOUT=Integer.MAX_VALUE;
 	
-	int READ_BUFFERSIZE=65536;
-	
+	int READ_BUFFERSIZE=5*1024*1024;
+
 	public void test1()throws Exception{
-		Logger.getLogger("udt").setLevel(Level.OFF);
+		Logger.getLogger("udt").setLevel(Level.INFO);
 		
 		UDTReceiver.dropRate=0;
 		TIMEOUT=Integer.MAX_VALUE;
@@ -58,14 +58,10 @@ public class TestUDTLargeData extends UDTTestBase{
 				digest.update(data);
 				System.out.println("Sent block <"+i+"> in "+(System.currentTimeMillis()-block)+" ms");
 			}
-			client.flush();
 			end=System.currentTimeMillis();
-			
 			client.shutdown();
 		}else throw new IllegalStateException();
 		String md5_sent=hexString(digest);
-		
-		client.shutdown();
 		
 		while(serverRunning)Thread.sleep(100);
 		

@@ -54,8 +54,8 @@ public class ClientSession extends UDTSession {
 
 	private UDPEndPoint endPoint;
 	
-	public ClientSession(UDPEndPoint endPoint)throws SocketException{
-		super("ClientSession localPort="+endPoint.getLocalPort());
+	public ClientSession(UDPEndPoint endPoint, Destination dest)throws SocketException{
+		super("ClientSession localPort="+endPoint.getLocalPort(),dest);
 		this.endPoint=endPoint;
 		logger.info("Created "+toString());
 	}
@@ -69,29 +69,28 @@ public class ClientSession extends UDTSession {
 	
 	public void connect() throws InterruptedException,IOException{
 		int n=0;
+		
+		sendHandShake();
+		
 		while(getState()!=ready){
 			if(getState()==invalid)throw new IOException("Can't connect!");
-			sendHandShake();
 			n++;
 			if(getState()!=ready)Thread.sleep(500);
 		}
 		logger.info("Connected, "+n+" handshake packets sent");		
 	}
 
-
-	int n_dataPacket = 0;
-	int n_keepAlivePacket=0;
-	int n_shutdownPacket=0;
-
 	@Override
-	public void received(UDTPacket p, Destination peer) {
+	public void received(UDTPacket packet, Destination peer) {
 		
-		lastPacket=p;
+		lastPacket=packet;
 		
-		if (getState()!=ready && lastPacket instanceof ConnectionHandshake) {
+		if (getState()!=ready && packet instanceof ConnectionHandshake) {
 			try{
-				logger.info("Creating UDTSocket for client session "+toString());
+				logger.info("Received connection handshake from "+peer);
 				setState(ready);
+				long peerSocketID=((ConnectionHandshake)packet).getSocketID();
+				destination.setSocketID(peerSocketID);
 				socket=new UDTSocket(endPoint,this);
 			}catch(Exception ex){
 				logger.log(Level.WARNING,"Error creating socket",ex);
@@ -100,7 +99,7 @@ public class ClientSession extends UDTSession {
 			return;
 		}
 		if(getState() == ready) {
-			if(lastPacket instanceof Shutdown){
+			if(packet instanceof Shutdown){
 				setState(shutdown);
 				active=false;
 				logger.info("Connection shutdown initiated by the other side.");
@@ -110,7 +109,7 @@ public class ClientSession extends UDTSession {
 			try{
 				//packet received means we should not yet expire
 				socket.getReceiver().resetEXPTimer();
-				if(lastPacket.forSender()){
+				if(packet.forSender()){
 					socket.getSender().receive(lastPacket);
 				}else{
 					socket.getReceiver().receive(lastPacket);	
@@ -127,13 +126,15 @@ public class ClientSession extends UDTSession {
 
 	//handshake for connect
 	protected void sendHandShake()throws IOException{
-		ConnectionHandshake reqHandshakePkt = new ConnectionHandshake();
-		reqHandshakePkt.setConnectionType(1);
-		reqHandshakePkt.setSocketType(1);
-		reqHandshakePkt.setInitialSeqNo(1);
-		reqHandshakePkt.setPacketSize(getDatagramSize());
-		reqHandshakePkt.setDestinationID(0);
-		endPoint.doSend(reqHandshakePkt);
+		ConnectionHandshake handshake = new ConnectionHandshake();
+		handshake.setConnectionType(1);
+		handshake.setSocketType(1);
+		handshake.setInitialSeqNo(1);
+		handshake.setPacketSize(getDatagramSize());
+		handshake.setSocketID(mySocketID);
+		handshake.setSession(this);
+		logger.info("Handshake to "+this.getDestination());
+		endPoint.doSend(handshake);
 	}
 	
 	

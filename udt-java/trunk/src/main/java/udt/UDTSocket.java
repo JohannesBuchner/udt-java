@@ -181,10 +181,13 @@ public class UDTSocket {
 			DataPacket packet=new DataPacket();
 			seqNo=sender.getNextSequenceNumber();
 			packet.setPacketSequenceNumber(seqNo);
-			packet.setDestinationID(0L);
+			packet.setSession(session);
+			packet.setDestinationID(session.getDestination().getSocketID());
 			packet.setData(chunk);
 			//put the packet into the send queue
-			while(!sender.sendUdtPacket(packet, timeout, units));
+			while(!sender.sendUdtPacket(packet, timeout, units)){
+				System.out.println("WAIT");
+			}
 		}
 		if(length>0)active=true;
 	}
@@ -202,7 +205,7 @@ public class UDTSocket {
 		if(seqNo>-1){
 			//wait until data has been sent out and acknowledged
 			while(active && !sender.haveAcknowledgementFor(seqNo)){
-				Thread.sleep(5);
+				sender.waitForAck(seqNo);
 			}
 		}
 	}
