@@ -49,10 +49,6 @@ import udt.packets.DataPacket;
  */
 public class UDTSocket {
 	
-	//TODO not used yet
-	//must match destination ID on UDTEndpoint
-	private long socketID = 0;
-	
 	//endpoint
 	private final UDPEndPoint endpoint;
 	
