@@ -93,7 +93,7 @@ public class FufexSend {
 				out.write(PacketUtil.encode(size));
 				long start=System.currentTimeMillis();
 				//and send the file
-				Util.copy(fis, out, size);
+				Util.copy(fis, out, size,true);
 				long end=System.currentTimeMillis();
 				System.out.println(socket.getSession().getStatistics());
 				float mbRate=1000*size/1024/1024/(end-start);

@@ -38,7 +38,6 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import udt.UDTInputStream;
@@ -141,19 +140,18 @@ public class SendFile extends Application{
 				try{
 					long size=file.length();
 					System.out.println("File size: "+size);
-					PacketUtil.encode(size);
 					//send size info
 					out.write(PacketUtil.encode(size));
 					long start=System.currentTimeMillis();
 					//and send the file
-					Util.copy(fis, out, size);
+					Util.copy(fis, out, size, true);
 					long end=System.currentTimeMillis();
-					logger.info(socket.getSession().getStatistics().toString());
-					logger.info("Rate: "+1000*size/1024/1024/(end-start)+" MBytes/sec.");
+					System.out.println(socket.getSession().getStatistics().toString());
+					System.out.println("Rate: "+1000*size/1024/1024/(end-start)+" MBytes/sec.");
 				}finally{
 					fis.close();
 				}
-				logger.info("Handling request from "+socket.getSession().getDestination());
+				logger.info("Finished request from "+socket.getSession().getDestination());
 			}catch(Exception ex){
 				ex.printStackTrace();
 				throw new RuntimeException(ex);

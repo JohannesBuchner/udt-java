@@ -98,7 +98,7 @@ public class Util {
 	 */
 	
 	public static void copy(InputStream source, OutputStream target)throws Exception{
-		copy(source,target,-1);
+		copy(source,target,-1, false);
 	}
 	
 	/**
@@ -106,20 +106,22 @@ public class Util {
 	 * @param source - input stream to read from
 	 * @param target - output stream to write to
 	 * @param size - how many bytes to copy (-1 for no limit)
+	 * @param flush - whether to flush after each write
 	 * @throws IOException
 	 */
-	public static void copy(InputStream source, OutputStream target, long size)throws IOException{
+	public static void copy(InputStream source, OutputStream target, long size, boolean flush)throws IOException{
 		byte[]buf=new byte[5*1024*1024];
 		int c;
 		long read=0;
 		while(true){
 			c=source.read(buf);
 			if(c<0)break;
-			target.write(buf, 0, c);
-			target.flush();
 			read+=c;
+			target.write(buf, 0, c);
+			if(flush)target.flush();
 			if(size>0 && read>=size)break;
 		}
+		target.flush();
 	}
 	
 	/**

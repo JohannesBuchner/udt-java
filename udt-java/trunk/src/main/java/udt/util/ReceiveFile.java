@@ -94,7 +94,7 @@ public class ReceiveFile extends Application{
 				System.out.println("Reading <"+size+"> bytes.");
 				long start = System.currentTimeMillis();
 			    //and read the file data
-				Util.copy(in, fos, size);
+				Util.copy(in, fos, size, false);
 				long end = System.currentTimeMillis();
 				long mb=size/(1024*1024);
 				double mbytes=1000*mb/(end-start);
