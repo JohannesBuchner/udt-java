@@ -36,6 +36,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import udt.UDTInputStream;
 import udt.UDTOutputStream;
@@ -50,61 +54,45 @@ import udt.packets.PacketUtil;
  * 
  * main method USAGE: java -cp .. udt.util.SendFile <server_port>
  */
-public class SendFile implements Runnable{
+public class SendFile extends Application{
 
 	private final int serverPort;
 
+	//TODO configure pool size
+	private final ExecutorService threadPool=Executors.newFixedThreadPool(3);
+		
 	public SendFile(int serverPort){
 		this.serverPort=serverPort;
 	}
+	
+	@Override
+	public void configure(){
+		super.configure();
+	}
 
 	public void run(){
+		configure();
 		try{
-			UDTServerSocket server=new UDTServerSocket(InetAddress.getByName("localhost"),serverPort);
-			UDTSocket socket=server.accept();
-			UDTInputStream in=socket.getInputStream();
-			UDTOutputStream out=socket.getOutputStream();
-			byte[]readBuf=new byte[32768];
-			ByteBuffer bb=ByteBuffer.wrap(readBuf);
-
-			//read name file info 
-			in.read(readBuf);
-
-			//how many bytes to read for the file name
-			int length=bb.getInt();
-			byte[]fileName=new byte[length];
-			bb.get(fileName);
-
-			File file=new File(new String(fileName));
-			System.out.println("File requested: "+file.getPath());
-
-			FileInputStream fis=new FileInputStream(file);
-			try{
-				long size=file.length();
-
-				PacketUtil.encode(size);
-				//send size info
-				out.write(PacketUtil.encode(size));
-				long start=System.currentTimeMillis();
-				//and send the file
-				Util.copy(fis, out, size);
-				long end=System.currentTimeMillis();
-				System.out.println(socket.getSession().getStatistics());
-				System.out.println("Rate: "+1000*size/1024/1024/(end-start)+" MBytes/sec.");
-			}finally{
-				fis.close();
+			InetAddress myHost=localIP!=null?InetAddress.getByName(localIP):InetAddress.getLocalHost();
+			UDTServerSocket server=new UDTServerSocket(myHost,serverPort);
+			while(true){
+				UDTSocket socket=server.accept();
+				threadPool.execute(new RequestRunner(socket));
 			}
 		}catch(Exception ex){
 			throw new RuntimeException(ex);
 		}
 	}
-
+	
 	/**
 	 * main() method for invoking as a commandline application
 	 * @param args
 	 * @throws Exception
 	 */
-	public static void main(String[] args) throws Exception{
+	public static void main(String[] fullArgs) throws Exception{
+		
+		String[] args=parseOptions(fullArgs);
+		
 		int serverPort=65321;
 		try{
 			serverPort=Integer.parseInt(args[0]);
@@ -120,4 +108,58 @@ public class SendFile implements Runnable{
 		System.out.println("Usage: java -cp ... udt.util.SendFile <server_port>");
 	}
 
+	public static class RequestRunner implements Runnable{
+		
+		private final static Logger logger=Logger.getLogger(RequestRunner.class.getName());
+		
+		private final UDTSocket socket;
+		
+		public RequestRunner(UDTSocket socket){
+			this.socket=socket;
+		}
+		
+		public void run(){
+			try{
+				logger.info("Handling request from "+socket.getSession().getDestination());
+				UDTInputStream in=socket.getInputStream();
+				UDTOutputStream out=socket.getOutputStream();
+				byte[]readBuf=new byte[32768];
+				ByteBuffer bb=ByteBuffer.wrap(readBuf);
+
+				//read name file info 
+				in.read(readBuf);
+
+				//how many bytes to read for the file name
+				int length=bb.getInt();
+				byte[]fileName=new byte[length];
+				bb.get(fileName);
+
+				File file=new File(new String(fileName));
+				System.out.println("File requested: "+file.getPath());
+
+				FileInputStream fis=new FileInputStream(file);
+				try{
+					long size=file.length();
+					System.out.println("File size: "+size);
+					PacketUtil.encode(size);
+					//send size info
+					out.write(PacketUtil.encode(size));
+					long start=System.currentTimeMillis();
+					//and send the file
+					Util.copy(fis, out, size);
+					long end=System.currentTimeMillis();
+					logger.info(socket.getSession().getStatistics().toString());
+					logger.info("Rate: "+1000*size/1024/1024/(end-start)+" MBytes/sec.");
+				}finally{
+					fis.close();
+				}
+				logger.info("Handling request from "+socket.getSession().getDestination());
+			}catch(Exception ex){
+				ex.printStackTrace();
+				throw new RuntimeException(ex);
+			}
+		}
+	}
+	
+	
 }
