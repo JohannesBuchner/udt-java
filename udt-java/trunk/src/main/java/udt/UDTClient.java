@@ -50,14 +50,18 @@ public class UDTClient {
 	private ClientSession clientSession;
 
 
-	//construstor
 	public UDTClient(InetAddress address, int localport)throws SocketException, UnknownHostException{
 		//create endpoint
 		clientEndpoint=new UDPEndPoint(address,localport);
 		logger.info("Created client endpoint on port "+localport);
 	}
 
-	//constructor
+	public UDTClient(InetAddress address)throws SocketException, UnknownHostException{
+		//create endpoint
+		clientEndpoint=new UDPEndPoint(address);
+		logger.info("Created client endpoint on port "+clientEndpoint.getLocalPort());
+	}
+
 	public UDTClient(UDPEndPoint endpoint)throws SocketException, UnknownHostException{
 		clientEndpoint=endpoint;
 	}

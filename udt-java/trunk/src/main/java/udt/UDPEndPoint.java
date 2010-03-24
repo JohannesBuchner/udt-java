@@ -275,6 +275,8 @@ public class UDPEndPoint {
 						session.received(packet,peer);
 					}
 				}
+			}catch(SocketException ex){
+				logger.log(Level.INFO, "SocketException: "+ex.getMessage());
 			}catch(SocketTimeoutException ste){
 				//can safely ignore... we will retry until the endpoint is stopped
 			}

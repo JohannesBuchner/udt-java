@@ -49,7 +49,7 @@ import udt.UDTOutputStream;
  * main method USAGE: 
  * java -cp ... udt.util.ReceiveFile <server_ip> <server_port> <remote_filename> <local_filename>
  */
-public class ReceiveFile implements Runnable{
+public class ReceiveFile extends Application{
 
 	private final int serverPort;
 	private final String serverHost;
@@ -64,8 +64,10 @@ public class ReceiveFile implements Runnable{
 	}
 	
 	public void run(){
+		configure();
 		try{
-			UDTClient client=new UDTClient(InetAddress.getByName("localhost"),64738);
+			InetAddress myHost=localIP!=null?InetAddress.getByName(localIP):InetAddress.getLocalHost();
+			UDTClient client=localPort!=-1?new UDTClient(myHost,localPort):new UDTClient(myHost);
 			client.connect(serverHost, serverPort);
 			UDTInputStream in=client.getInputStream();
 			UDTOutputStream out=client.getOutputStream();
@@ -97,14 +99,10 @@ public class ReceiveFile implements Runnable{
 				long mb=size/(1024*1024);
 				double mbytes=1000*mb/(end-start);
 				System.out.println(client.getStatistics());
-				
-				System.out.println("Rate: "+(int)mbytes+" MBytes/sec.");
 				double mbit=8*mbytes;
-				System.out.println("Rate: "+(int)mbit+" MBit/sec.");
-				
-				
+				System.out.println("Rate: "+(int)mbytes+" MBytes/sec. "+(int)mbit+" MBit/sec.");
+			
 				client.shutdown();
-				
 			}finally{
 				fos.close();
 			}		
@@ -114,11 +112,13 @@ public class ReceiveFile implements Runnable{
 	}
 	
 	
-	public static void main(String[] args) throws Exception{
+	public static void main(String[] fullArgs) throws Exception{
 		int serverPort=65321;
 		String serverHost="localhost";
 		String remoteFile="";
 		String localFile="";
+		
+		String[] args=parseOptions(fullArgs);
 		
 		try{
 			serverHost=args[0];
