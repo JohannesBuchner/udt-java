@@ -17,12 +17,13 @@ public class TestEchoServerMultiClient extends TestCase {
 		
 		UDTClient client=new UDTClient(InetAddress.getByName("localhost"),12345);
 		client.connect("localhost", 65321);
+		doClientCommunication(client);
 		
 		UDTClient client2=new UDTClient(InetAddress.getByName("localhost"),12346);
 		client2.connect("localhost", 65321);
+		doClientCommunication(client2);
 		
-		doClientCommunication(client);
-		doClientCommunication(client);
+		es.stop();
 	}
 
 	private void doClientCommunication(UDTClient client)throws Exception{

@@ -23,6 +23,7 @@ public class EchoServer implements Runnable{
 	final Thread serverThread;
 
 	volatile boolean started=false;
+	volatile boolean stopped=false;
 
 	public EchoServer(int port)throws Exception{
 		server=new UDTServerSocket(InetAddress.getByName("localhost"),port);
@@ -32,12 +33,17 @@ public class EchoServer implements Runnable{
 	public void start(){
 		serverThread.start();
 	}
-
+	
+	public void stop(){
+		stopped=true;
+	}
 	public void run(){
 		try{
 			started=true;
-			final UDTSocket socket=server.accept();
-			pool.execute(new Request(socket));
+			while(!stopped){
+				final UDTSocket socket=server.accept();
+				pool.execute(new Request(socket));
+			}
 		}catch(Exception ex){
 			ex.printStackTrace();
 		}
@@ -54,7 +60,7 @@ public class EchoServer implements Runnable{
 		return bos.toString();
 	}
 
-	
+
 	public static class Request implements Runnable{
 
 		final UDTSocket socket;
@@ -65,18 +71,18 @@ public class EchoServer implements Runnable{
 
 		public void run(){
 			try{
-				System.out.println("Client CONNECTED");
+				System.out.println("Processing request from <"+socket.getSession().getDestination()+">");
 				UDTInputStream in=socket.getInputStream();
 				UDTOutputStream out=socket.getOutputStream();
 				PrintWriter writer=new PrintWriter(new OutputStreamWriter(out));
-				while(true){
-					String line=readLine(in);
-					if(line==null)break;
+				String line=readLine(in);
+				if(line!=null){
 					System.out.println("ECHO: "+line);
 					//else echo back the line
 					writer.println(line);
 					writer.flush();
 				}
+				System.out.println("Request from <"+socket.getSession().getDestination()+"> finished.");
 			}catch(Exception ex){
 				ex.printStackTrace();
 			}

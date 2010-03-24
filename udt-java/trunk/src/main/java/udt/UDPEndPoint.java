@@ -256,7 +256,9 @@ public class UDPEndPoint {
 						addSession(session.getSocketID(),session);
 						//TODO need to check peer to avoid duplicate server session
 						if(serverSocketMode){
+							logger.fine("Pooling new request.");
 							sessionHandoff.put(session);
+							logger.fine("Request taken for processing.");
 						}
 					}
 					peer.setSocketID(((ConnectionHandshake)packet).getSocketID());
