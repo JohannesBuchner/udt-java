@@ -22,7 +22,6 @@
       <directory>src/main/scripts</directory>
       <outputDirectory>bin</outputDirectory>
     </fileSet>
-   </fileSets>
     <fileSet>
       <directory>src/main/java</directory>
       <outputDirectory>src</outputDirectory>
