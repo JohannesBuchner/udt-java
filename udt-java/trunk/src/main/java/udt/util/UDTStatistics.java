@@ -53,7 +53,7 @@ public class UDTStatistics {
 
 	private long roundTripTime;
 	private long roundTripTimeVariance;
-	private long packetArrivalRate;
+	private volatile long packetArrivalRate;
 	private long estimatedLinkCapacity;
 	
 	private MessageDigest digest;
@@ -127,6 +127,10 @@ public class UDTStatistics {
 
 	public String getDigest(){
 		return hexString(digest);
+	}
+	
+	public long getPacketArrivalRate(){
+		return packetArrivalRate;
 	}
 	
 	public String toString(){

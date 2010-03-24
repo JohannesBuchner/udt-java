@@ -1,10 +1,10 @@
 package udt;
 
+import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import udt.packets.DataPacket;
 import udt.packets.Destination;
 
 public class TestUdpEndpoint extends UDTTestBase{
@@ -12,7 +12,7 @@ public class TestUdpEndpoint extends UDTTestBase{
 	public void testClientServerMode()throws Exception{
 
 		//select log level
-		Logger.getLogger("udt").setLevel(Level.WARNING);
+		Logger.getLogger("udt").setLevel(Level.INFO);
 		
 		UDPEndPoint server=new UDPEndPoint(InetAddress.getByName("localhost"),65322);
 		server.start();
@@ -27,9 +27,9 @@ public class TestUdpEndpoint extends UDTTestBase{
 		client.sendBlocking(data);
 		Thread.sleep(2000);
 		System.out.println(client.getStatistics());
-		System.out.println(server.getSession(0l).getStatistics());
+		System.out.println(server.getSessions().iterator().next().getStatistics());
 		int sent=client.getStatistics().getNumberOfSentDataPackets();
-		int received=server.getSession(0l).getStatistics().getNumberOfReceivedDataPackets();
+		int received=server.getSessions().iterator().next().getStatistics().getNumberOfReceivedDataPackets();
 		assertEquals(sent, received);
 		
 		server.stop();
@@ -44,18 +44,17 @@ public class TestUdpEndpoint extends UDTTestBase{
 	public void testRawSendRate()throws Exception{
 		Logger.getLogger("udt").setLevel(Level.WARNING);
 		System.out.println("Checking raw UDP send rate...");
-		UDPEndPoint endpoint=new UDPEndPoint(InetAddress.getByName("localhost"),65322);
+		InetAddress localhost=InetAddress.getByName("localhost");
+		UDPEndPoint endpoint=new UDPEndPoint(localhost,65322);
 		endpoint.start();
-		Destination d1=new Destination("localhost",12345);
-		endpoint.addDestination(0l, d1);
-		DataPacket p=new DataPacket();
-		int dataSize=32768-24;//max packet size minus header length
-		p.setData(getRandomData(dataSize));
+		Destination d1=new Destination(localhost,12345);
+		int dataSize=UDTSession.DEFAULT_DATAGRAM_SIZE;
+		DatagramPacket p=new DatagramPacket(getRandomData(dataSize),dataSize,d1.getAddress(),d1.getPort());
 		int N=100000;
 		long start=System.currentTimeMillis();
 		//send many packets as fast as we can
 		for(int i=0;i<N;i++){
-			endpoint.doSend(p);
+			endpoint.sendRaw(p);
 		}
 		long end=System.currentTimeMillis();
 		float rate=1000*N/(end-start);

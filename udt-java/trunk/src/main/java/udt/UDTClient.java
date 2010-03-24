@@ -70,12 +70,12 @@ public class UDTClient {
      * @throws UnknownHostException
      */
    public void connect(String host, int port)throws InterruptedException, UnknownHostException, IOException{
+	   InetAddress address=InetAddress.getByName(host);
+	   Destination destination=new Destination(address,port);
 		//create client session...
-		clientSession=new ClientSession(clientEndpoint);
-		Destination destination=new Destination(host,port);
-		clientSession.setDestination(destination);
-		clientEndpoint.addSession(0L, clientSession);
-		clientEndpoint.addDestination(0L, destination);
+		clientSession=new ClientSession(clientEndpoint,destination);
+		clientEndpoint.addClientSession(destination, clientSession);
+		clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
 		
 		clientEndpoint.start();
 		clientSession.connect();
@@ -121,7 +121,8 @@ public class UDTClient {
 		if (clientSession.isReady()&& clientSession.active==true) 
 		{
 			Shutdown shutdown = new Shutdown();
-			shutdown.setDestinationID(0l);//TODO
+			shutdown.setDestinationID(clientSession.getDestination().getSocketID());
+			shutdown.setSession(clientSession);
 			try{
 				clientEndpoint.doSend(shutdown);
 			}

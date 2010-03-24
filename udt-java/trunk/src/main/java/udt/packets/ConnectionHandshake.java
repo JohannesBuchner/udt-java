@@ -61,6 +61,12 @@ public class ConnectionHandshake extends ControlPacket {
 		decode(controlInformation );
 		
 	}
+	
+	//faster than instanceof...
+	public boolean isConnectionHandshake(){
+		return true;
+	}
+	
 	void decode(byte[]data){
 		udtVersion =PacketUtil.decode(data, 0);
 		socketType=PacketUtil.decode(data, 4);

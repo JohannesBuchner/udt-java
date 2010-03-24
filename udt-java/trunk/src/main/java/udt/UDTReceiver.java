@@ -33,7 +33,8 @@
 package udt;
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -52,8 +53,8 @@ import udt.receiver.PacketHistoryWindow;
 import udt.receiver.PacketPairWindow;
 import udt.receiver.ReceiverLossList;
 import udt.receiver.ReceiverLossListEntry;
-import udt.util.Util;
 import udt.util.UDTThreadFactory;
+import udt.util.Util;
 
 /**
  * receiver part of a UDT entity
@@ -113,11 +114,11 @@ public class UDTReceiver {
 	//to check the ACK, NAK, or EXP timer
 	private long nextACK;
 	//microseconds to next ACK event
-	private long ACK_INTERVAL=5000;
+	private long ACK_INTERVAL=100000;
 
 	private long nextNAK;
 	//microseconds to next NAK event
-	private long NAK_INTERVAL=5000;
+	private long NAK_INTERVAL=100000;
 
 	private long nextEXP;
 	//microseconds to next EXP event
@@ -129,7 +130,7 @@ public class UDTReceiver {
 	private final long bufferSize;
 	
 	//stores packets to be sent
-	private final LinkedBlockingQueue<UDTPacket>handoffQueue=new LinkedBlockingQueue<UDTPacket>();
+	private final BlockingQueue<UDTPacket>handoffQueue=new ArrayBlockingQueue<UDTPacket>(32);
 
 	private Thread receiverThread;
 
@@ -230,6 +231,7 @@ public class UDTReceiver {
 			}
 			processUDTPacket(packet);
 		}
+		//else System.out.println("no packet.");
 		Thread.yield();
 	}
 
@@ -395,6 +397,8 @@ public class UDTReceiver {
 	protected void sendNAK(long currentSequenceNumber)throws IOException{
 		NegativeAcknowledgement nAckPacket= new NegativeAcknowledgement();
 		nAckPacket.addLossInfo(largestReceivedSeqNumber+1, currentSequenceNumber);
+		nAckPacket.setSession(session);
+		nAckPacket.setDestinationID(session.getDestination().getSocketID());
 		//put all the sequence numbers between (but excluding) these two values into the
 		//receiver loss list
 		for(long i=largestReceivedSeqNumber+1;i<currentSequenceNumber;i++){
@@ -408,13 +412,14 @@ public class UDTReceiver {
 		if(sequenceNumbers.size()==0)return;
 		NegativeAcknowledgement nAckPacket= new NegativeAcknowledgement();
 		nAckPacket.addLossInfo(sequenceNumbers);
+		nAckPacket.setSession(session);
+		nAckPacket.setDestinationID(session.getDestination().getSocketID());
 		endpoint.doSend(nAckPacket);
 		session.getStatistics().incNumberOfNAKSent();
 	}
 
 	protected long sendLightAcknowledgment(long ackNumber)throws IOException{
 		Acknowledgement acknowledgmentPkt=buildLightAcknowledgement(ackNumber);
-		acknowledgmentPkt.setDestinationID(0);
 		endpoint.doSend(acknowledgmentPkt);
 		session.getStatistics().incNumberOfACKSent();
 		haveUnacknowledgedData=false;
@@ -429,9 +434,9 @@ public class UDTReceiver {
 		//set the packet arrival rate
 		packetArrivalSpeed=(long)packetHistoryWindow.getPacketArrivalSpeed();
 		acknowledgmentPkt.setPacketReceiveRate(packetArrivalSpeed);
-		//send out the ACK packet
-		acknowledgmentPkt.setDestinationID(0);
+		
 		endpoint.doSend(acknowledgmentPkt);
+		
 		session.getStatistics().incNumberOfACKSent();
 		session.getStatistics().setPacketArrivalRate(packetArrivalSpeed, estimateLinkCapacity);
 		haveUnacknowledgedData=false;
@@ -449,6 +454,10 @@ public class UDTReceiver {
 		acknowledgmentPkt.setRoundTripTimeVar(roundTripTimeVar);
 		//set the buffer size
 		acknowledgmentPkt.setBufferSize(bufferSize);
+		
+		acknowledgmentPkt.setDestinationID(session.getDestination().getSocketID());
+		acknowledgmentPkt.setSession(session);
+		
 		return acknowledgmentPkt;
 	}
 
@@ -479,13 +488,15 @@ public class UDTReceiver {
 	
 	protected void sendKeepAlive()throws IOException{
 		KeepAlive ka=new KeepAlive();
-		ka.setDestinationID(0l);
+		ka.setDestinationID(session.getDestination().getSocketID());
+		ka.setSession(session);
 		endpoint.doSend(ka);
 	}
 
 	protected void sendShutdown()throws IOException{
 		Shutdown s=new Shutdown();
-		s.setDestinationID(0l);
+		s.setDestinationID(session.getDestination().getSocketID());
+		s.setSession(session);
 		endpoint.doSend(s);
 	}
 

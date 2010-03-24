@@ -36,6 +36,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import udt.UDTPacket;
+import udt.UDTSession;
 
 public class DataPacket implements UDTPacket, Comparable<DataPacket>{
 
@@ -45,6 +46,8 @@ public class DataPacket implements UDTPacket, Comparable<DataPacket>{
 	private long timeStamp;
 	private long destinationID;
 
+	private UDTSession session;
+	
 	public DataPacket(){
 	}
 
@@ -161,6 +164,18 @@ public class DataPacket implements UDTPacket, Comparable<DataPacket>{
 
 	public boolean forSender(){
 		return false;
+	}
+
+	public boolean isConnectionHandshake(){
+		return false;
+	}
+	
+	public UDTSession getSession() {
+		return session;
+	}
+
+	public void setSession(UDTSession session) {
+		this.session = session;
 	}
 
 	//Compare data packets by their sequence number
