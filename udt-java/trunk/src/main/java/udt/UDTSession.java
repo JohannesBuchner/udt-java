@@ -62,6 +62,8 @@ public abstract class UDTSession {
 	
 	protected int receiveBufferSize=64*32768;
 	
+	protected final UDTCongestionControl cc;
+	
 	/**
 	 * flow window size, i.e. how many data packets are
 	 * in-flight at a single time
@@ -97,12 +99,17 @@ public abstract class UDTSession {
 		statistics=new UDTStatistics(description);
 		mySocketID=nextSocketID.incrementAndGet();
 		this.destination=destination;
+		cc=new UDTCongestionControl(this);
 	}
 	
 	public abstract void received(UDTPacket packet, Destination peer);
 	
 	public UDTSocket getSocket() {
 		return socket;
+	}
+
+	public UDTCongestionControl getCongestionControl() {
+		return cc;
 	}
 
 	public int getState() {

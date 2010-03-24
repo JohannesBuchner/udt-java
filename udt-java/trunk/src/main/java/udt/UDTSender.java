@@ -216,6 +216,7 @@ public class UDTSender {
 		}
 		//update SND TODO
 
+		session.getCongestionControl().onNAK(nak.getDecodedLossInfo());
 		//reset EXP. EXP is in the receiver currently.... maybe move to SOCKET?
 		session.getSocket().getReceiver().resetEXPTimer();
 		session.getStatistics().incNumberOfNAKReceived();

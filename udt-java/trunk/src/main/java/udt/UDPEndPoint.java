@@ -83,7 +83,7 @@ public class UDPEndPoint {
 	//has the endpoint been stopped?
 	private volatile boolean stopped=false;
 
-	public static final int DATAGRAM_SIZE=61440;
+	public static final int DATAGRAM_SIZE=32768;
 
 	/**
 	 * bind to any local port on the given host address

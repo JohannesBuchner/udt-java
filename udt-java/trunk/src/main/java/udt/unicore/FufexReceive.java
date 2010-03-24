@@ -92,7 +92,7 @@ public class FufexReceive implements Runnable {
 			//now read file data
 			FileOutputStream fos=new FileOutputStream(localFile,append);
 			try{
-				Util.copy(in, fos, size);
+				Util.copy(in, fos, size, false);
 			}finally{
 				fos.close();
 			}

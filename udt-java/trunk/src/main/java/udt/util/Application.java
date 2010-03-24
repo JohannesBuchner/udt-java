@@ -15,10 +15,10 @@ public abstract class Application implements Runnable {
 
 	public void configure(){
 		if(verbose){
-			Logger.getLogger("").setLevel(Level.INFO);
+			Logger.getLogger("udt").setLevel(Level.INFO);
 		}
 		else{
-			Logger.getLogger("").setLevel(Level.OFF);
+			Logger.getLogger("udt").setLevel(Level.OFF);
 		}
 	}
 	
@@ -43,10 +43,10 @@ public abstract class Application implements Runnable {
 			verbose=true;
 			return;
 		}
-		if(arg.startsWith("-localIP")){
+		if(arg.startsWith("--localIP")){
 			localIP=arg.split("=")[1];
 		}
-		if(arg.startsWith("-localPort")){
+		if(arg.startsWith("--localPort")){
 			localPort=Integer.parseInt(arg.split("=")[1]);
 		}
 	}
