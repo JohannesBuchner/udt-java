@@ -50,6 +50,7 @@ import udt.packets.KeepAlive;
 import udt.packets.NegativeAcknowledgement;
 import udt.sender.SenderLossList;
 import udt.sender.SenderLossListEntry;
+import udt.util.UDTStatistics;
 import udt.util.UDTThreadFactory;
 import udt.util.Util;
 
@@ -68,6 +69,9 @@ public class UDTSender {
 	private final UDPEndPoint endpoint;
 
 	private final UDTSession session;
+	
+	private final UDTStatistics statistics;
+	
 	//sendLossList store the sequence numbers of lost packets
 	//feed back by the receiver through NAK pakets
 	private final SenderLossList senderLossList;
@@ -77,8 +81,6 @@ public class UDTSender {
 	private final BlockingQueue<DataPacket>sendQueue;
 	//thread reading packets from send queue and sending them
 	private Thread senderThread;
-	//time to live for a packet in the loss list(TTL)
-	private long timeToLive;
 
 	//protects against races when reading/writing to the sendBuffer
 	private final Object sendLock=new Object();
@@ -103,6 +105,7 @@ public class UDTSender {
 	public UDTSender(UDTSession session,UDPEndPoint endpoint){
 		this.endpoint= endpoint;
 		this.session=session;
+		this.statistics=session.getStatistics();
 		if(!session.isReady())throw new IllegalStateException("UDTSession is not ready.");
 		
 		senderLossList=new SenderLossList();
@@ -147,7 +150,7 @@ public class UDTSender {
 			sendBuffer.put(p.getPacketSequenceNumber(), p);
 			unacknowledged.incrementAndGet();
 		}
-		session.getStatistics().incNumberOfSentDataPackets();
+		statistics.incNumberOfSentDataPackets();
 	}
 
 	/**
@@ -180,25 +183,29 @@ public class UDTSender {
 	protected void receive(UDTPacket p)throws IOException{
 		if (p instanceof Acknowledgement) {
 			Acknowledgement acknowledgement=(Acknowledgement)p;
-			UDTCongestionControl cc=session.getCongestionControl();
-			if(((Acknowledgement) p).getPacketReceiveRate()>0){
-				cc.setRTT(acknowledgement.getRoundTripTime(), acknowledgement.getRoundTripTimeVar());
-				cc.setPacketArrivalRate(acknowledgement.getPacketReceiveRate(), acknowledgement.getEstimatedLinkCapacity());
-			}
-			cc.onACK(acknowledgement.getAckNumber());
-			onAcknowledge(acknowledgement.getAckNumber());
-			session.getStatistics().incNumberOfACKReceived();
-			return;
+			onAcknowledge(acknowledgement);
 		}
-
 		else if (p instanceof NegativeAcknowledgement) {
 			NegativeAcknowledgement nak=(NegativeAcknowledgement)p;
 			onNAKPacketReceived(nak);
 		}
 	}
 
-	protected void onAcknowledge(long ackNumber)throws IOException{
+	protected void onAcknowledge(Acknowledgement acknowledgement)throws IOException{
 		if(latch!=null)latch.countDown();
+		UDTCongestionControl cc=session.getCongestionControl();
+		if(acknowledgement.getPacketReceiveRate()>0){
+			long rtt=acknowledgement.getRoundTripTime();
+			long rttVar=acknowledgement.getRoundTripTimeVar();
+			cc.setRTT(rtt,rttVar);
+			long rate=acknowledgement.getPacketReceiveRate();
+			long linkCapacity=acknowledgement.getEstimatedLinkCapacity();
+			cc.setPacketArrivalRate(rate, linkCapacity);
+			statistics.setRTT(rtt, rttVar);
+			statistics.setPacketArrivalRate(rate, linkCapacity);
+		}
+		cc.onACK(acknowledgement.getAckNumber());
+		long ackNumber=acknowledgement.getAckNumber();
 		//need to remove all sequence numbers up the ack number from the sendBuffer
 		boolean removed=false;
 		for(long s=lastAckSequenceNumber;s<ackNumber;s++){
@@ -212,6 +219,9 @@ public class UDTSender {
 		lastAckSequenceNumber=Math.max(lastAckSequenceNumber, ackNumber);		
 		//send ACK2 packet to the receiver
 		sendAck2(ackNumber);
+		statistics.incNumberOfACKReceived();
+		statistics.storeParameters();
+		
 	}
 
 	/**
@@ -227,7 +237,8 @@ public class UDTSender {
 		session.getCongestionControl().onNAK(nak.getDecodedLossInfo());
 		//reset EXP. EXP is in the receiver currently.... maybe move to SOCKET?
 		session.getSocket().getReceiver().resetEXPTimer();
-		session.getStatistics().incNumberOfNAKReceived();
+		statistics.incNumberOfNAKReceived();
+		statistics.storeParameters();
 		return;
 	}
 
@@ -269,7 +280,7 @@ public class UDTSender {
 				DataPacket pktToRetransmit = sendBuffer.get(seqNumber);
 				if(pktToRetransmit!=null){
 					endpoint.doSend(pktToRetransmit);
-					session.getStatistics().incNumberOfRetransmittedDataPackets();
+					statistics.incNumberOfRetransmittedDataPackets();
 				}
 				senderLossList.remove(seqNumber);
 			}catch (Exception e) {
@@ -285,7 +296,7 @@ public class UDTSender {
 					&& unAcknowledged<session.getFlowWindowSize()){
 				double snd=session.getCongestionControl().getSendInterval();
 				if(Util.getCurrentTime()-lastSentTime<snd){
-					session.getStatistics().incNumberOfCCSlowDownEvents();
+					statistics.incNumberOfCCSlowDownEvents();
 					return;
 				}
 				
@@ -298,7 +309,7 @@ public class UDTSender {
 			}else{
 				//should we *really* wait for an ack?!
 				if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
-					session.getStatistics().incNumberOfCCWindowExceededEvents();
+					statistics.incNumberOfCCWindowExceededEvents();
 				}
 			}
 		}
