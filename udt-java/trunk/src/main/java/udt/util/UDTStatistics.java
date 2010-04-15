@@ -49,6 +49,8 @@ public class UDTStatistics {
 	private final AtomicInteger numberOfNAKReceived=new AtomicInteger(0);
 	private final AtomicInteger numberOfRetransmittedDataPackets=new AtomicInteger(0);
 	private final AtomicInteger numberOfACKSent=new AtomicInteger(0);
+	private final AtomicInteger numberOfCCSlowDownEvents=new AtomicInteger(0);
+	
 	private final String componentDescription;
 
 	private long roundTripTime;
@@ -111,6 +113,10 @@ public class UDTStatistics {
 		numberOfACKSent.incrementAndGet();
 	}
 
+	public void incNumberOfCCSlowDownEvents() {
+		numberOfCCSlowDownEvents.incrementAndGet();
+	}
+	
 	public void setRTT(long rtt, long rttVar){
 		this.roundTripTime=rtt;
 		this.roundTripTimeVariance=rttVar;
@@ -148,6 +154,9 @@ public class UDTStatistics {
 		}
 		if(packetArrivalRate>0){
 			sb.append("Packet rate: ").append(packetArrivalRate).append("/sec., link capacity: ").append(estimatedLinkCapacity).append("/sec.\n");
+		}
+		if(numberOfCCSlowDownEvents.get()>0){
+			sb.append("CC slowdown ").append(numberOfCCSlowDownEvents.get()).append("\n");
 		}
 		return sb.toString();
 	}

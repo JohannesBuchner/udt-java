@@ -51,6 +51,7 @@ import udt.packets.NegativeAcknowledgement;
 import udt.sender.SenderLossList;
 import udt.sender.SenderLossListEntry;
 import udt.util.UDTThreadFactory;
+import udt.util.Util;
 
 
 /**
@@ -179,6 +180,13 @@ public class UDTSender {
 	protected void receive(UDTPacket p)throws IOException{
 		if (p instanceof Acknowledgement) {
 			Acknowledgement acknowledgement=(Acknowledgement)p;
+			UDTCongestionControl cc=session.getCongestionControl();
+			if(((Acknowledgement) p).getPacketReceiveRate()>0){
+				
+				cc.setRTT(acknowledgement.getRoundTripTime(), acknowledgement.getRoundTripTimeVar());
+				cc.setPacketArrivalRate(acknowledgement.getPacketReceiveRate(), acknowledgement.getEstimatedLinkCapacity());
+			}
+			cc.onACK(acknowledgement.getAckNumber());
 			onAcknowledge(acknowledgement.getAckNumber());
 			return;
 		}
@@ -243,6 +251,7 @@ public class UDTSender {
 	/**
 	 * sender algorithm
 	 */
+	long lastSentTime=0;
 	public void senderAlgorithm()throws InterruptedException, IOException{
 		//if the sender's loss list is not empty 
 		SenderLossListEntry entry=senderLossList.getFirstEntry();
@@ -269,17 +278,28 @@ public class UDTSender {
 		}
 
 		else {
-			//if the number of unacknowledged data packets exceeds the flow
-			//window size, wait for an ACK
+			//if the number of unacknowledged data packets does not exceed the congestion 
+			//and the flow window sizes, pack a new packet
 			int unAcknowledged=unacknowledged.get();
-			if(unAcknowledged<session.getFlowWindowSize()){
+			if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
+					&& unAcknowledged<session.getFlowWindowSize()){
+				double snd=1000000*session.getCongestionControl().getSendInterval();
+				if(Util.getCurrentTime()-lastSentTime<snd){
+					session.getStatistics().incNumberOfCCSlowDownEvents();
+					System.out.println("XXX"+snd);
+					return;
+				}
 				DataPacket dp=sendQueue.poll(10,TimeUnit.MILLISECONDS);
 				if(dp!=null){
+					lastSentTime=Util.getCurrentTime();
 					send(dp);
 					largestSentSequenceNumber=dp.getPacketSequenceNumber();
 				}
 			}else{
 				//should we *really* wait for an ack?!
+				if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
+					session.getStatistics().incNumberOfCCSlowDownEvents();
+				}
 			}
 		}
 		Thread.yield();
@@ -316,6 +336,12 @@ public class UDTSender {
 	public long getLargestSentSequenceNumber(){
 		return largestSentSequenceNumber;
 	}
+	/**
+	 * returns the last Ack. sequence number 
+	 */
+	public long getLastAckSequenceNumber(){
+		return lastAckSequenceNumber;
+	}
 	
 	boolean haveAcknowledgementFor(long sequenceNumber){
 		return sequenceNumber<=lastAckSequenceNumber;
@@ -337,7 +363,7 @@ public class UDTSender {
 	 */
 	public void waitForAck(long sequenceNumber)throws InterruptedException{
 		latch=new CountDownLatch(1);
-		while(!haveAcknowledgementFor(sequenceNumber)){
+		while(!session.isShutdown() && !haveAcknowledgementFor(sequenceNumber)){
 			latch.await(10, TimeUnit.MILLISECONDS);
 		}
 	}
