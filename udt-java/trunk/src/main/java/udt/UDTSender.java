@@ -283,12 +283,12 @@ public class UDTSender {
 			int unAcknowledged=unacknowledged.get();
 			if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
 					&& unAcknowledged<session.getFlowWindowSize()){
-				double snd=1000000*session.getCongestionControl().getSendInterval();
+				double snd=session.getCongestionControl().getSendInterval();
 				if(Util.getCurrentTime()-lastSentTime<snd){
 					session.getStatistics().incNumberOfCCSlowDownEvents();
-					System.out.println("XXX"+snd);
 					return;
 				}
+				
 				DataPacket dp=sendQueue.poll(10,TimeUnit.MILLISECONDS);
 				if(dp!=null){
 					lastSentTime=Util.getCurrentTime();

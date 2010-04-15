@@ -61,7 +61,13 @@ public class Util {
 	public static long getSYNTime(){
 		return 10000;
 	}
-
+	/**
+	 * get the SYN time in seconds. The SYN time is 0.01 seconds = 10000 microseconds
+	 * @return
+	 */
+	public static double getSYNTimeSeconds(){
+		return 0.01;
+	}
 	/**
 	 * read a line terminated by a new line '\n' character
 	 * @param input - the input string to read from 
