@@ -88,19 +88,18 @@ public class ReceiveFile extends Application{
 			long size=ByteBuffer.wrap(sizeInfo).getInt();
 			
 			File file=new File(new String(localFile));
-			System.out.println("Write to local file <"+file.getAbsolutePath()+">");
+			System.out.println("[ReceiveFile] Write to local file <"+file.getAbsolutePath()+">");
 			FileOutputStream fos=new FileOutputStream(file);
 			try{
-				System.out.println("Reading <"+size+"> bytes.");
+				System.out.println("[ReceiveFile] Reading <"+size+"> bytes.");
 				long start = System.currentTimeMillis();
 			    //and read the file data
 				Util.copy(in, fos, size, false);
 				long end = System.currentTimeMillis();
 				long mb=size/(1024*1024);
 				double mbytes=1000*mb/(end-start);
-				System.out.println(client.getStatistics());
 				double mbit=8*mbytes;
-				System.out.println("Rate: "+(int)mbytes+" MBytes/sec. "+(int)mbit+" MBit/sec.");
+				System.out.println("[ReceiveFile] Rate: "+(int)mbytes+" MBytes/sec. "+(int)mbit+" MBit/sec.");
 			
 				client.shutdown();
 			}finally{

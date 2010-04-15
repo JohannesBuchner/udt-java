@@ -134,12 +134,12 @@ public class SendFile extends Application{
 				bb.get(fileName);
 
 				File file=new File(new String(fileName));
-				System.out.println("File requested: "+file.getPath());
+				System.out.println("[SendFile] File requested: "+file.getPath());
 
 				FileInputStream fis=new FileInputStream(file);
 				try{
 					long size=file.length();
-					System.out.println("File size: "+size);
+					System.out.println("[SendFile] File size: "+size);
 					//send size info
 					out.write(PacketUtil.encode(size));
 					long start=System.currentTimeMillis();
@@ -147,7 +147,7 @@ public class SendFile extends Application{
 					Util.copy(fis, out, size, true);
 					long end=System.currentTimeMillis();
 					System.out.println(socket.getSession().getStatistics().toString());
-					System.out.println("Rate: "+1000*size/1024/1024/(end-start)+" MBytes/sec.");
+					System.out.println("[SendFile] Rate: "+1000*size/1024/1024/(end-start)+" MBytes/sec.");
 				}finally{
 					fis.close();
 				}

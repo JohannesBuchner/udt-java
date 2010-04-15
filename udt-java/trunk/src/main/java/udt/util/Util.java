@@ -110,7 +110,7 @@ public class Util {
 	 * @throws IOException
 	 */
 	public static void copy(InputStream source, OutputStream target, long size, boolean flush)throws IOException{
-		byte[]buf=new byte[5*1024*1024];
+		byte[]buf=new byte[1*1024*1024];
 		int c;
 		long read=0;
 		while(true){
@@ -121,7 +121,7 @@ public class Util {
 			if(flush)target.flush();
 			if(size>0 && read>=size)break;
 		}
-		target.flush();
+		if(!flush)target.flush();
 	}
 	
 	/**
