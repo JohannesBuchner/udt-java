@@ -49,7 +49,9 @@ public class UDTStatistics {
 	private final AtomicInteger numberOfNAKReceived=new AtomicInteger(0);
 	private final AtomicInteger numberOfRetransmittedDataPackets=new AtomicInteger(0);
 	private final AtomicInteger numberOfACKSent=new AtomicInteger(0);
+	private final AtomicInteger numberOfACKReceived=new AtomicInteger(0);
 	private final AtomicInteger numberOfCCSlowDownEvents=new AtomicInteger(0);
+	private final AtomicInteger numberOfCCWindowExceededEvents=new AtomicInteger(0);
 	
 	private final String componentDescription;
 
@@ -90,6 +92,9 @@ public class UDTStatistics {
 	public int getNumberOfACKSent() {
 		return numberOfACKSent.get();
 	}
+	public int getNumberOfACKReceived() {
+		return numberOfACKReceived.get();
+	}
 	public void incNumberOfSentDataPackets() {
 		numberOfSentDataPackets.incrementAndGet();
 	}
@@ -113,6 +118,14 @@ public class UDTStatistics {
 		numberOfACKSent.incrementAndGet();
 	}
 
+	public void incNumberOfACKReceived() {
+		numberOfACKReceived.incrementAndGet();
+	}
+
+	public void incNumberOfCCWindowExceededEvents() {
+		numberOfCCWindowExceededEvents.incrementAndGet();
+	}
+	
 	public void incNumberOfCCSlowDownEvents() {
 		numberOfCCSlowDownEvents.incrementAndGet();
 	}
@@ -145,6 +158,7 @@ public class UDTStatistics {
 		sb.append("Sent data packets: ").append(getNumberOfSentDataPackets()).append("\n");
 		sb.append("Received data packets: ").append(getNumberOfReceivedDataPackets()).append("\n");
 		sb.append("Duplicate data packets: ").append(getNumberOfDuplicateDataPackets()).append("\n");
+		sb.append("ACK received: ").append(getNumberOfACKReceived()).append("\n");
 		sb.append("NAK received: ").append(getNumberOfNAKReceived()).append("\n");
 		sb.append("Retransmitted data: ").append(getNumberOfNAKReceived()).append("\n");
 		sb.append("NAK sent: ").append(getNumberOfNAKSent()).append("\n");
@@ -157,6 +171,9 @@ public class UDTStatistics {
 		}
 		if(numberOfCCSlowDownEvents.get()>0){
 			sb.append("CC slowdown ").append(numberOfCCSlowDownEvents.get()).append("\n");
+		}
+		if(numberOfCCWindowExceededEvents.get()>0){
+			sb.append("CC window exceeded ").append(numberOfCCWindowExceededEvents.get()).append("\n");
 		}
 		return sb.toString();
 	}

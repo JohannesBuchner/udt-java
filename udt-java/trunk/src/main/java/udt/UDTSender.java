@@ -182,12 +182,12 @@ public class UDTSender {
 			Acknowledgement acknowledgement=(Acknowledgement)p;
 			UDTCongestionControl cc=session.getCongestionControl();
 			if(((Acknowledgement) p).getPacketReceiveRate()>0){
-				
 				cc.setRTT(acknowledgement.getRoundTripTime(), acknowledgement.getRoundTripTimeVar());
 				cc.setPacketArrivalRate(acknowledgement.getPacketReceiveRate(), acknowledgement.getEstimatedLinkCapacity());
 			}
 			cc.onACK(acknowledgement.getAckNumber());
 			onAcknowledge(acknowledgement.getAckNumber());
+			session.getStatistics().incNumberOfACKReceived();
 			return;
 		}
 
@@ -298,7 +298,7 @@ public class UDTSender {
 			}else{
 				//should we *really* wait for an ack?!
 				if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
-					session.getStatistics().incNumberOfCCSlowDownEvents();
+					session.getStatistics().incNumberOfCCWindowExceededEvents();
 				}
 			}
 		}

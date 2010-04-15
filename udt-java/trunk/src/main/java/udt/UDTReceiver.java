@@ -33,6 +33,7 @@
 package udt;
 import java.io.IOException;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -334,12 +335,14 @@ public class UDTReceiver {
 	//number of received data packets
 	private int n=0;
 	
+	private final Random rand=new java.util.Random();
+	
 	protected void onDataPacketReceived(DataPacket dp)throws IOException{
 		long currentSequenceNumber = dp.getPacketSequenceNumber();
 		
 		//check whether to drop this packet
 		n++;
-		if(dropRate>0 && n % dropRate ==0){
+		if(dropRate>0 && n % dropRate == 0){
 			logger.info("**** TESTING:::: DROPPING PACKET "+currentSequenceNumber+" FOR TESTING");
 			return;
 		}
