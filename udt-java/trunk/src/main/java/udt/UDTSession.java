@@ -192,5 +192,5 @@ public abstract class UDTSession {
 	public synchronized void setInitialSequenceNumber(long initialSequenceNumber){
 		this.initialSequenceNumber=initialSequenceNumber;
 	}
-	
+
 }

@@ -54,6 +54,7 @@ import udt.receiver.PacketHistoryWindow;
 import udt.receiver.PacketPairWindow;
 import udt.receiver.ReceiverLossList;
 import udt.receiver.ReceiverLossListEntry;
+import udt.util.UDTStatistics;
 import udt.util.UDTThreadFactory;
 import udt.util.Util;
 
@@ -68,6 +69,8 @@ public class UDTReceiver {
 	private final UDPEndPoint endpoint;
 
 	private final UDTSession session;
+
+	private final UDTStatistics statistics;
 
 	//record seqNo of detected lostdata and latest feedback time
 	private final ReceiverLossList receiverLossList;
@@ -115,11 +118,11 @@ public class UDTReceiver {
 	//to check the ACK, NAK, or EXP timer
 	private long nextACK;
 	//microseconds to next ACK event
-	private long ACK_INTERVAL=100000;
+	private long ACK_INTERVAL=Util.getSYNTime();
 
 	private long nextNAK;
 	//microseconds to next NAK event
-	private long NAK_INTERVAL=100000;
+	private long NAK_INTERVAL=Util.getSYNTime();
 
 	private long nextEXP;
 	//microseconds to next EXP event
@@ -150,6 +153,7 @@ public class UDTReceiver {
 	public UDTReceiver(UDTSession session,UDPEndPoint endpoint){
 		this.endpoint = endpoint;
 		this.session=session;
+		this.statistics=session.getStatistics();
 		if(!session.isReady())throw new IllegalStateException("UDTSession is not ready.");
 		ackHistoryWindow = new AckHistoryWindow(16);
 		packetHistoryWindow = new PacketHistoryWindow(16);
@@ -335,8 +339,6 @@ public class UDTReceiver {
 	//number of received data packets
 	private int n=0;
 	
-	private final Random rand=new java.util.Random();
-	
 	protected void onDataPacketReceived(DataPacket dp)throws IOException{
 		long currentSequenceNumber = dp.getPacketSequenceNumber();
 		
@@ -383,7 +385,7 @@ public class UDTReceiver {
 			}
 		}
 		
-		session.getStatistics().incNumberOfReceivedDataPackets();
+		statistics.incNumberOfReceivedDataPackets();
 		
 		//(7).Update the LRSN
 		if(currentSequenceNumber>largestReceivedSeqNumber){
@@ -418,13 +420,13 @@ public class UDTReceiver {
 		nAckPacket.setSession(session);
 		nAckPacket.setDestinationID(session.getDestination().getSocketID());
 		endpoint.doSend(nAckPacket);
-		session.getStatistics().incNumberOfNAKSent();
+		statistics.incNumberOfNAKSent();
 	}
 
 	protected long sendLightAcknowledgment(long ackNumber)throws IOException{
 		Acknowledgement acknowledgmentPkt=buildLightAcknowledgement(ackNumber);
 		endpoint.doSend(acknowledgmentPkt);
-		session.getStatistics().incNumberOfACKSent();
+		statistics.incNumberOfACKSent();
 		haveUnacknowledgedData=false;
 		return acknowledgmentPkt.getAckSequenceNumber();
 	}
@@ -440,8 +442,8 @@ public class UDTReceiver {
 		
 		endpoint.doSend(acknowledgmentPkt);
 		
-		session.getStatistics().incNumberOfACKSent();
-		session.getStatistics().setPacketArrivalRate(packetArrivalSpeed, estimateLinkCapacity);
+		statistics.incNumberOfACKSent();
+		statistics.setPacketArrivalRate(packetArrivalSpeed, estimateLinkCapacity);
 		haveUnacknowledgedData=false;
 		return acknowledgmentPkt.getAckSequenceNumber();
 	}
@@ -485,7 +487,7 @@ public class UDTReceiver {
 			roundTripTimeVar = (roundTripTimeVar* 3 + Math.abs(roundTripTimeVar- rtt)) / 4;
 			ACK_INTERVAL=4*roundTripTime+roundTripTimeVar+Util.getSYNTime();
 			NAK_INTERVAL=ACK_INTERVAL;
-			session.getStatistics().setRTT(roundTripTime, roundTripTimeVar);
+			statistics.setRTT(roundTripTime, roundTripTimeVar);
 		}
 	}
 	

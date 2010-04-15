@@ -1,5 +1,6 @@
 package udt.performance;
 
+import java.io.File;
 import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.util.Random;
@@ -77,6 +78,9 @@ public class TestUDTLargeData extends UDTTestBase{
 		System.out.println(client.getStatistics());
 		
 		assertEquals(md5_sent,md5_received);
+		
+		//store stat history to file
+		client.getStatistics().writeParameterHistory(new File("/tmp/udtstats-"+System.currentTimeMillis()));
 	}
 	
 	long total=0;

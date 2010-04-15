@@ -32,8 +32,14 @@
 
 package udt.util;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -55,10 +61,11 @@ public class UDTStatistics {
 	
 	private final String componentDescription;
 
-	private long roundTripTime;
-	private long roundTripTimeVariance;
+	private volatile long roundTripTime;
+	private volatile long roundTripTimeVariance;
 	private volatile long packetArrivalRate;
-	private long estimatedLinkCapacity;
+	private volatile long estimatedLinkCapacity;
+	private volatile double sendPeriod;
 	
 	private MessageDigest digest;
 
@@ -140,6 +147,10 @@ public class UDTStatistics {
 		this.estimatedLinkCapacity=linkCapacity;
 	}
 	
+	public void setSendPeriod(double sendPeriod){
+		this.sendPeriod=sendPeriod;
+	}
+	
 	public void updateReadDataMD5(byte[]data){
 		digest.update(data);
 	}
@@ -177,7 +188,37 @@ public class UDTStatistics {
 		}
 		return sb.toString();
 	}
+	
+	private final List<StatisticsHistoryEntry>statsHistory=new ArrayList<StatisticsHistoryEntry>();
+	boolean first=true;
+	/**
+	 * take a snapshot of relevant parameters for later storing to
+	 * file using {@link #writeParameterHistory(File)}
+	 */
+	public synchronized void storeParameters(){
+		if(first){
+			first=false;
+			statsHistory.add(new StatisticsHistoryEntry(true,"time","packetRate"));
+		}
+		statsHistory.add(new StatisticsHistoryEntry(packetArrivalRate));
+	}
 
+	/**
+	 * write saved parameters to disk 
+	 * @param toFile
+	 */
+	public void writeParameterHistory(File toFile)throws IOException{
+		FileWriter fos=new FileWriter(toFile);
+		try{
+			for(StatisticsHistoryEntry s: statsHistory){
+				fos.write(s.toString());
+				fos.write('\n');
+			}
+		}finally{
+			fos.close();
+		}
+	}
+	
 	public static String hexString(MessageDigest digest){
 		byte[] messageDigest = digest.digest();
 		StringBuilder hexString = new StringBuilder();
