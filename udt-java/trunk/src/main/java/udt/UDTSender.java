@@ -59,8 +59,6 @@ import udt.util.Util;
  * sender part of a UDT entity
  * 
  * @see UDTReceiver
- * 
- * 
  */
 public class UDTSender {
 
@@ -299,7 +297,6 @@ public class UDTSender {
 					statistics.incNumberOfCCSlowDownEvents();
 					return;
 				}
-				
 				DataPacket dp=sendQueue.poll(10,TimeUnit.MILLISECONDS);
 				if(dp!=null){
 					lastSentTime=Util.getCurrentTime();

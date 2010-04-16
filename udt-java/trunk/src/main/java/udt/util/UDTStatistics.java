@@ -58,7 +58,7 @@ public class UDTStatistics {
 	private final AtomicInteger numberOfACKReceived=new AtomicInteger(0);
 	private final AtomicInteger numberOfCCSlowDownEvents=new AtomicInteger(0);
 	private final AtomicInteger numberOfCCWindowExceededEvents=new AtomicInteger(0);
-	
+
 	private final String componentDescription;
 
 	private volatile long roundTripTime;
@@ -66,7 +66,7 @@ public class UDTStatistics {
 	private volatile long packetArrivalRate;
 	private volatile long estimatedLinkCapacity;
 	private volatile double sendPeriod;
-	
+
 	private MessageDigest digest;
 
 	public UDTStatistics(String componentDescription){
@@ -132,11 +132,11 @@ public class UDTStatistics {
 	public void incNumberOfCCWindowExceededEvents() {
 		numberOfCCWindowExceededEvents.incrementAndGet();
 	}
-	
+
 	public void incNumberOfCCSlowDownEvents() {
 		numberOfCCSlowDownEvents.incrementAndGet();
 	}
-	
+
 	public void setRTT(long rtt, long rttVar){
 		this.roundTripTime=rtt;
 		this.roundTripTimeVariance=rttVar;
@@ -146,11 +146,11 @@ public class UDTStatistics {
 		this.packetArrivalRate=rate;
 		this.estimatedLinkCapacity=linkCapacity;
 	}
-	
+
 	public void setSendPeriod(double sendPeriod){
 		this.sendPeriod=sendPeriod;
 	}
-	
+
 	public void updateReadDataMD5(byte[]data){
 		digest.update(data);
 	}
@@ -158,11 +158,11 @@ public class UDTStatistics {
 	public String getDigest(){
 		return hexString(digest);
 	}
-	
+
 	public long getPacketArrivalRate(){
 		return packetArrivalRate;
 	}
-	
+
 	public String toString(){
 		StringBuilder sb=new StringBuilder();
 		sb.append("Statistics for ").append(componentDescription).append("\n");
@@ -181,16 +181,17 @@ public class UDTStatistics {
 			sb.append("Packet rate: ").append(packetArrivalRate).append("/sec., link capacity: ").append(estimatedLinkCapacity).append("/sec.\n");
 		}
 		if(numberOfCCSlowDownEvents.get()>0){
-			sb.append("CC slowdown ").append(numberOfCCSlowDownEvents.get()).append("\n");
+			sb.append("CC rate slowdown events: ").append(numberOfCCSlowDownEvents.get()).append("\n");
 		}
 		if(numberOfCCWindowExceededEvents.get()>0){
-			sb.append("CC window exceeded ").append(numberOfCCWindowExceededEvents.get()).append("\n");
+			sb.append("CC window slowdown events: ").append(numberOfCCWindowExceededEvents.get()).append("\n");
 		}
 		return sb.toString();
 	}
-	
+
 	private final List<StatisticsHistoryEntry>statsHistory=new ArrayList<StatisticsHistoryEntry>();
 	boolean first=true;
+	private long initialTime;
 	/**
 	 * take a snapshot of relevant parameters for later storing to
 	 * file using {@link #writeParameterHistory(File)}
@@ -198,9 +199,10 @@ public class UDTStatistics {
 	public synchronized void storeParameters(){
 		if(first){
 			first=false;
-			statsHistory.add(new StatisticsHistoryEntry(true,"time","packetRate"));
+			statsHistory.add(new StatisticsHistoryEntry(true,0,"time","packetRate","sendPeriod"));
+			initialTime=System.currentTimeMillis();
 		}
-		statsHistory.add(new StatisticsHistoryEntry(packetArrivalRate));
+		statsHistory.add(new StatisticsHistoryEntry(false,System.currentTimeMillis()-initialTime,packetArrivalRate,sendPeriod));
 	}
 
 	/**
@@ -218,7 +220,7 @@ public class UDTStatistics {
 			fos.close();
 		}
 	}
-	
+
 	public static String hexString(MessageDigest digest){
 		byte[] messageDigest = digest.digest();
 		StringBuilder hexString = new StringBuilder();

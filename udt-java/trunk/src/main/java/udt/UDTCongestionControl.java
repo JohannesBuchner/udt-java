@@ -2,14 +2,17 @@ package udt;
 
 import java.util.List;
 
+import javax.swing.text.Utilities;
+
+import udt.util.UDTStatistics;
 import udt.util.Util;
 
 public class UDTCongestionControl {
 
 	private final UDTSession session;
-
+	private final UDTStatistics statistics;
 	//round trip time in microseconds
-	private long roundTripTime;
+	private long roundTripTime=10*Util.getSYNTime();
 	
 	//rate in packets per second
 	private long packetArrivalRate=100;
@@ -19,7 +22,7 @@ public class UDTCongestionControl {
 	
 	long maxControlWindowSize=128;
 
-	// Packet sending period = packetsendInterval, in microseconds
+	// Packet sending period = packet send interval, in microseconds
 	private double packetSendingPeriod=1;              
 	// Congestion window size, in packets
 	private long congestionWindowSize=16;
@@ -56,6 +59,7 @@ public class UDTCongestionControl {
 
 	public UDTCongestionControl(UDTSession session){
 		this.session=session;
+		this.statistics=session.getStatistics();
 		lastDecreaseSeqNo= session.getInitialSequenceNumber()-1;
 		init();
 	}
@@ -104,7 +108,7 @@ public class UDTCongestionControl {
 		
 		//1.if it is  in slow start phase,set the congestion window size 
 		//to the product of packet arrival rate and(rtt +SYN)
-		double A=packetArrivalRate*(roundTripTime/1e6+0.01);
+		double A=packetArrivalRate*(roundTripTime+Util.getSYNTime());
 		if(slowStartPhase){
 			congestionWindowSize=16;
 			slowStartPhase=false;
@@ -123,14 +127,16 @@ public class UDTCongestionControl {
 		//4.update the send period :
 		packetSendingPeriod=packetSendingPeriod*Util.getSYNTimeSeconds()/
 					(packetSendingPeriod*numOfIncreasingPacket+Util.getSYNTimeSeconds());
+		statistics.setSendPeriod(packetSendingPeriod);
 	}
 
 	final double Beta=0.0000015/UDPEndPoint.DATAGRAM_SIZE;
-	public double computeNumOfIncreasingPacket (){
+	private double computeNumOfIncreasingPacket (){
 		long B,C,S;
 		B=estimatedLinkCapacity;
 		C=packetArrivalRate;
 		S=UDPEndPoint.DATAGRAM_SIZE;
+		
 		double logBase10=Math.log10( S*(B-C)*8 );
 		double power10 = Math.pow( 10.0,Math.ceil (logBase10) )* Beta;
 		double inc = Math.max(power10, 1/S);
@@ -173,6 +179,7 @@ public class UDTCongestionControl {
 			// -Update LastDecSeq
 			lastDecreaseSeqNo = currentMaxSequenceNumber;
 			// -Stop.
+			statistics.setSendPeriod(packetSendingPeriod);
 			return;
 		}
 
@@ -185,6 +192,7 @@ public class UDTCongestionControl {
 			congestionEpochDecreaseCount++;
 			// c. Record the current largest sent sequence number (LastDecSeq).
 			lastDecreaseSeqNo= currentMaxSequenceNumber;
+			statistics.setSendPeriod(packetSendingPeriod);
 			return;
 		}
 	}

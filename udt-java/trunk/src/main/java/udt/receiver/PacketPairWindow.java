@@ -68,7 +68,7 @@ public class PacketPairWindow extends CircularArray<Long>{
 	/**
 	 * compute the estimated linK capacity using the values in
 	 * packet pair window
-	 * @return number of  packets per second
+	 * @return number of packets per second
 	 */
 	public double getEstimatedLinkCapacity(){
 		return 1e6/computeMedianTimeInterval();
