@@ -74,6 +74,9 @@ public class FlowWindow<E> extends PriorityBlockingQueue<E> {
 	 */
 	@Override
 	public boolean offer(E e) {
+		if(contains(e)){
+			return true;
+		}
 		if(size()<capacity){
 			return super.offer(e);
 		}else return false;

@@ -109,7 +109,7 @@ public class NegativeAcknowledgement extends ControlPacket{
 	 */
 	public void addLossInfo(long firstSequenceNumber, long lastSequenceNumber) {
 		//check if we really need an interval
-		if(lastSequenceNumber-firstSequenceNumber==1){
+		if(lastSequenceNumber-firstSequenceNumber==0){
 			addLossInfo(firstSequenceNumber);
 			return;
 		}

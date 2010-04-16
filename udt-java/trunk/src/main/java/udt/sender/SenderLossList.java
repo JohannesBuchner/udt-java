@@ -49,7 +49,9 @@ public class SenderLossList {
 	}
 
 	public void insert(SenderLossListEntry obj){
-		backingList.add(obj);
+		synchronized (backingList) {
+			if(!backingList.contains(obj))backingList.add(obj);	
+		}
 	}
 
 	public void remove(long seqNo){
@@ -61,6 +63,7 @@ public class SenderLossList {
 				return;
 			}
 		}
+		//backingList.remove(new SenderLossListEntry(seqNo));
 	}
 
 	/**

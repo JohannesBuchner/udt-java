@@ -3,20 +3,17 @@ package udt.performance;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.nio.ByteBuffer;
 import java.util.Random;
 
 import junit.framework.TestCase;
 
 /**
  * send some data over a UDP connection and measure performance
- * 
  */
 public class UDPTest extends TestCase {
 
-	final int BUFSIZE=32768;
-	final int num_packets=10*1000;
-	final int packetSize=1024;
+	final int num_packets=100*1000;
+	final int packetSize=1500;
 	
 	public void test1()throws Exception{
 		runServer();
@@ -25,20 +22,15 @@ public class UDPTest extends TestCase {
 
 		//generate a test array with random content
 		N=num_packets*packetSize;
-		byte[]data=new byte[N];
+		byte[]data=new byte[packetSize];
 		new Random().nextBytes(data);
 		long start=System.currentTimeMillis();
-		ByteBuffer bb=ByteBuffer.wrap(data);
-		DatagramPacket dp=new DatagramPacket(new byte[BUFSIZE],BUFSIZE);
+		DatagramPacket dp=new DatagramPacket(new byte[packetSize],packetSize);
 		dp.setAddress(InetAddress.getByName("localhost"));
 		dp.setPort(65321);
-		
-		System.out.println("Sending data block of <"+N+"> bytes");
-		while(bb.remaining()>0){
-			int len=Math.min(bb.remaining(),BUFSIZE);
-			byte[]chunk=new byte[len];
-			bb.get(chunk);
-			dp.setData(chunk);
+		System.out.println("Sending "+num_packets+" data blocks of <"+packetSize+"> bytes");
+		for(int i=0;i<num_packets;i++){
+			dp.setData(data);
 			s.send(dp);
 		}
 		System.out.println("Finished sending.");
@@ -46,7 +38,8 @@ public class UDPTest extends TestCase {
 		System.out.println("Server stopped.");
 		long end=System.currentTimeMillis();
 		System.out.println("Done. Sending "+N/1024/1024+" Mbytes took "+(end-start)+" ms");
-		System.out.println("Rate "+N/(end-start)+" Kbytes/sec");
+		System.out.println("Rate "+N/1000/(end-start)+" Mbytes/sec");
+		System.out.println("Rate "+num_packets+" packets/sec");
 		System.out.println("Server received: "+total);
 	}
 	
@@ -61,7 +54,7 @@ public class UDPTest extends TestCase {
 		Runnable serverProcess=new Runnable(){
 			public void run(){
 				try{
-					byte[]buf=new byte[BUFSIZE];
+					byte[]buf=new byte[packetSize];
 					DatagramPacket dp=new DatagramPacket(buf,buf.length);
 					while(true){
 						serverSocket.receive(dp);

@@ -40,6 +40,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -87,7 +88,7 @@ public class UDTSender {
 	private final AtomicInteger unacknowledged=new AtomicInteger(0);
 
 	//for generating data packet sequence numbers
-	private long nextSequenceNumber=-1;
+	private long nextSequenceNumber=0;
 
 	//the largest data packet sequence number that has actually been sent out
 	private volatile long largestSentSequenceNumber=-1;
@@ -100,6 +101,8 @@ public class UDTSender {
 
 	private volatile boolean stopped=false;
 
+	private volatile AtomicReference<CountDownLatch> latchRef=new AtomicReference<CountDownLatch>();
+	
 	public UDTSender(UDTSession session,UDPEndPoint endpoint){
 		this.endpoint= endpoint;
 		this.session=session;
@@ -110,6 +113,8 @@ public class UDTSender {
 		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(MAX_SIZE,0.75f,2); 
 		sendQueue = new LinkedBlockingQueue<DataPacket>(MAX_SIZE);  
 		lastAckSequenceNumber=session.getInitialSequenceNumber();
+		
+		latchRef.set(new CountDownLatch(1));
 		start();
 	}
 
@@ -190,8 +195,8 @@ public class UDTSender {
 	}
 
 	protected void onAcknowledge(Acknowledgement acknowledgement)throws IOException{
-		if(latch!=null)latch.countDown();
-		UDTCongestionControl cc=session.getCongestionControl();
+		latchRef.get().countDown();
+		CongestionControl cc=session.getCongestionControl();
 		if(acknowledgement.getPacketReceiveRate()>0){
 			long rtt=acknowledgement.getRoundTripTime();
 			long rttVar=acknowledgement.getRoundTripTimeVar();
@@ -230,8 +235,6 @@ public class UDTSender {
 		for(Integer i: nak.getDecodedLossInfo()){
 			senderLossList.insert(new SenderLossListEntry(i));
 		}
-		//update SND TODO
-
 		session.getCongestionControl().onNAK(nak.getDecodedLossInfo());
 		//reset EXP. EXP is in the receiver currently.... maybe move to SOCKET?
 		session.getSocket().getReceiver().resetEXPTimer();
@@ -297,7 +300,7 @@ public class UDTSender {
 					statistics.incNumberOfCCSlowDownEvents();
 					return;
 				}
-				DataPacket dp=sendQueue.poll(10,TimeUnit.MILLISECONDS);
+				DataPacket dp=sendQueue.poll(100,TimeUnit.MILLISECONDS);
 				if(dp!=null){
 					lastSentTime=Util.getCurrentTime();
 					send(dp);
@@ -309,8 +312,9 @@ public class UDTSender {
 					statistics.incNumberOfCCWindowExceededEvents();
 				}
 			}
+			Thread.yield();
 		}
-		Thread.yield();
+		
 	}
 
 	/**
@@ -363,16 +367,14 @@ public class UDTSender {
 		return senderLossList.isEmpty();
 	}
 	
-	private volatile CountDownLatch latch=null;
-	
 	/**
 	 * wait for the next acknowledge
 	 * @throws InterruptedException
 	 */
-	public void waitForAck(long sequenceNumber)throws InterruptedException{
-		latch=new CountDownLatch(1);
+	public synchronized void waitForAck(long sequenceNumber)throws InterruptedException{
 		while(!session.isShutdown() && !haveAcknowledgementFor(sequenceNumber)){
-			latch.await(10, TimeUnit.MILLISECONDS);
+			latchRef.set(new CountDownLatch(1));
+			latchRef.get().await(10, TimeUnit.MILLISECONDS);
 		}
 	}
 

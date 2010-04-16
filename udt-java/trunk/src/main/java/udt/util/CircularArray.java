@@ -35,18 +35,23 @@ package udt.util;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Circular array: the most recent value overwrites the oldest one if there is no more free 
+ * space in the array
+ */
 public class CircularArray<T>{
 
 	protected int position=0;
-	protected boolean haveOverflow=false;
-	//the maximum number of entries
-	protected int max=1;
 	
-	protected List<T>circularArray;
+	protected boolean haveOverflow=false;
+	
+	protected final int max;
+	
+	protected final List<T>circularArray;
 	
 	/**
-	 * ArrayList von T(object's type).  The most recent value overwrite the oldest one
-	 * if no more free space in the array
+	 * Create a new circularArray of the given size
+	 * 
 	 * @param size
 	 */
 	public CircularArray(int size){
@@ -55,10 +60,7 @@ public class CircularArray<T>{
 	}
 	
 	/**
-	 * Insert the specified entry at the specified position in this list.
-	 * the most recent value overwrite the oldest one
-	 * if no more free space in the circularArray
-	 * @param entry
+	 * add an entry
 	 */
 	public void add(T entry){
 		if(position>=max){
@@ -74,7 +76,6 @@ public class CircularArray<T>{
 	
 	/**
 	 * Returns the number of elements in this list 
-	 * @return
 	 */
 	public int size(){
 		return circularArray.size();
@@ -83,7 +84,5 @@ public class CircularArray<T>{
 	public String toString(){
 		return circularArray.toString();
 	}
-	
-	
-	
+
 }
