@@ -62,13 +62,13 @@ public abstract class UDTSession {
 	
 	protected int receiveBufferSize=64*32768;
 	
-	protected final UDTCongestionControl cc;
+	protected final CongestionControl cc;
 	
 	/**
 	 * flow window size, i.e. how many data packets are
 	 * in-flight at a single time
 	 */
-	protected int flowWindowSize=32;
+	protected int flowWindowSize=64;
 
 	/**
 	 * remote UDT entity (address and socket ID)
@@ -82,6 +82,12 @@ public abstract class UDTSession {
 	
 	
 	public static final int DEFAULT_DATAGRAM_SIZE=UDPEndPoint.DATAGRAM_SIZE;
+	
+	/**
+	 * key for a system property defining the CC class to be used
+	 * @see CongestionControl
+	 */
+	public static final String CC_CLASS="udt.congestioncontrol.class";
 	
 	/**
 	 * Buffer size (i.e. datagram size)
@@ -99,7 +105,18 @@ public abstract class UDTSession {
 		statistics=new UDTStatistics(description);
 		mySocketID=nextSocketID.incrementAndGet();
 		this.destination=destination;
-		cc=new UDTCongestionControl(this);
+		
+		//init configurable CC
+		String clazzP=System.getProperty(CC_CLASS,UDTCongestionControl.class.getName());
+		Object ccObject=null;
+		try{
+			Class<?>clazz=Class.forName(clazzP);
+			ccObject=clazz.getDeclaredConstructor(UDTSession.class).newInstance(this);
+		}catch(Exception e){
+			ccObject=new UDTCongestionControl(this);
+		}
+		cc=(CongestionControl)ccObject;
+		System.out.println("using "+cc.getClass().getName());
 	}
 	
 	public abstract void received(UDTPacket packet, Destination peer);
@@ -108,7 +125,7 @@ public abstract class UDTSession {
 		return socket;
 	}
 
-	public UDTCongestionControl getCongestionControl() {
+	public CongestionControl getCongestionControl() {
 		return cc;
 	}
 

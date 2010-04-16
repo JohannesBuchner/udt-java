@@ -32,7 +32,7 @@
 
 package udt.receiver;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.PriorityBlockingQueue;
 
@@ -50,25 +50,18 @@ public class ReceiverLossList {
 	
 	public ReceiverLossList(){
 		backingList = new PriorityBlockingQueue<ReceiverLossListEntry>(16);
-	} 
-	
-	public void insert(ReceiverLossListEntry entry){
-		backingList.add(entry);
 	}
 	
-	public void remove(ReceiverLossListEntry obj){
-		backingList.remove(obj);
+	public void insert(ReceiverLossListEntry entry){
+		synchronized (backingList) {
+			if(!backingList.contains(entry)){
+				backingList.add(entry);
+			}
+		}
 	}
 
 	public void remove(long seqNo){
-		Iterator<ReceiverLossListEntry>iterator=backingList.iterator();
-		while(iterator.hasNext()){
-			ReceiverLossListEntry e=iterator.next();
-			if(e.getSequenceNumber()==seqNo){
-				iterator.remove();
-				break;
-			}
-		}
+		backingList.remove(new ReceiverLossListEntry(seqNo));
 	}
 	
 	public boolean contains(ReceiverLossListEntry obj){
@@ -102,8 +95,10 @@ public class ReceiverLossList {
 	public List<Long>getFilteredSequenceNumbers(long RTT, boolean doFeedback){
 		List<Long>result=new ArrayList<Long>();
 		long now=Util.getCurrentTime();
-		for(ReceiverLossListEntry e: backingList){
-			if( (now-e.getLastFeedbackTime())>2*RTT){
+		ReceiverLossListEntry[]sorted=backingList.toArray(new ReceiverLossListEntry[0]);
+		Arrays.sort(sorted);
+		for(ReceiverLossListEntry e: sorted){
+			if( (now-e.getLastFeedbackTime())>e.getK()*RTT){
 				result.add(e.getSequenceNumber());
 				if(doFeedback)e.feedback();
 			}

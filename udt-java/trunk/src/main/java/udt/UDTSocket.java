@@ -182,7 +182,7 @@ public class UDTSocket {
 			packet.setData(chunk);
 			//put the packet into the send queue
 			while(!sender.sendUdtPacket(packet, timeout, units)){
-				System.out.println("WAIT");
+				System.out.println("SOCKET WAIT");
 			}
 		}
 		if(length>0)active=true;

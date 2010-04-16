@@ -2,12 +2,10 @@ package udt;
 
 import java.util.List;
 
-import javax.swing.text.Utilities;
-
 import udt.util.UDTStatistics;
 import udt.util.Util;
 
-public class UDTCongestionControl {
+public class UDTCongestionControl implements CongestionControl {
 
 	private final UDTSession session;
 	private final UDTStatistics statistics;
@@ -64,26 +62,30 @@ public class UDTCongestionControl {
 		init();
 	}
 
-	/**
-	 * Callback function to be called (only) at the start of a UDT connection.
-	 * when the UDT socket is conected 
+	/* (non-Javadoc)
+	 * @see udt.CongestionControl#init()
 	 */
 	public void init() {
 		
 	}
 
+	/* (non-Javadoc)
+	 * @see udt.CongestionControl#setRTT(long, long)
+	 */
 	public void setRTT(long rtt, long rttVar){
 		this.roundTripTime=rtt;
 	}
 
+	/* (non-Javadoc)
+	 * @see udt.CongestionControl#setPacketArrivalRate(long, long)
+	 */
 	public void setPacketArrivalRate(long rate, long linkCapacity){
 		this.packetArrivalRate=rate;
 		this.estimatedLinkCapacity=linkCapacity;
 	}
 
-	/**
-	 * Inter-packet interval in seconds
-	 * @return 
+	/* (non-Javadoc)
+	 * @see udt.CongestionControl#getSendInterval()
 	 */
 	public double getSendInterval(){
 		return packetSendingPeriod ;
@@ -93,14 +95,12 @@ public class UDTCongestionControl {
 	 * congestionWindowSize
 	 * @return
 	 */
-	protected long getCongestionWindowSize(){
-		return congestionWindowSize;
+	public long getCongestionWindowSize(){
+		return 2048;//congestionWindowSize;
 	}
 
-	/**
-	 * Callback function to be called when an ACK packet is received.
-	 * @param ackSeqno: the data sequence number acknowledged by this ACK.
-	 * see spec. page(16-17)
+	/* (non-Javadoc)
+	 * @see udt.CongestionControl#onACK(long)
 	 */
 	public void onACK(long ackSeqno){
 		//the fixed size of a UDT packet 
@@ -143,9 +143,8 @@ public class UDTCongestionControl {
 		return inc;
 	}
 	
-	/**
-	 *  Callback function to be called when a loss report is received.
-	 * @param lossInfo:list of sequence number of packets, in the format describled in packet.cpp.
+	/* (non-Javadoc)
+	 * @see udt.CongestionControl#onNAK(java.util.List)
 	 */
 	public void onNAK(List<Integer>lossInfo){
 		long firstBiggestlossSeqNo=lossInfo.get(lossInfo.size()-1);
@@ -197,24 +196,22 @@ public class UDTCongestionControl {
 		}
 	}
 
-	/**
-	 * Callback function to be called when a timeout event occurs
+	/* (non-Javadoc)
+	 * @see udt.CongestionControl#onTimeout()
 	 */
 	public void onTimeout(){}
 
-	/**
-	 * Callback function to be called when a data is sent.
-	 * @param packetSeqNo: the data sequence number.
+	/* (non-Javadoc)
+	 * @see udt.CongestionControl#onPacketSend(long)
 	 */
 	public void onPacketSend(long packetSeqNo){}
 
-	/**
-	 * Callback function to be called when a data is received.
-	 * @param packetSeqNo: the data sequence number.
+	/* (non-Javadoc)
+	 * @see udt.CongestionControl#onPacketReceive(long)
 	 */
 	public void onPacketReceive(long packetSeqNo){}
-	/**
-	 * Callback function to be called when a UDT connection is closed.
+	/* (non-Javadoc)
+	 * @see udt.CongestionControl#close()
 	 */
 	public void close(){}
 

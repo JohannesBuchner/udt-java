@@ -55,8 +55,6 @@ import udt.util.UDTThreadFactory;
 /**
  * the UDPEndpoint takes care of sending and receiving UDP network packets,
  * dispatching them to the correct {@link UDTSession}
- * 
- * 
  */
 public class UDPEndPoint {
 
@@ -83,7 +81,7 @@ public class UDPEndPoint {
 	//has the endpoint been stopped?
 	private volatile boolean stopped=false;
 
-	public static final int DATAGRAM_SIZE=32768;
+	public static final int DATAGRAM_SIZE=1500;
 
 	/**
 	 * bind to any local port on the given host address

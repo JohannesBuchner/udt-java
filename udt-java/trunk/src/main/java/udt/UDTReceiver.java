@@ -84,7 +84,7 @@ public class UDTReceiver {
 	private long lastDataPacketArrivalTime=0;
 	
 	//largest received data packet sequence number(LRSN)
-	private volatile long largestReceivedSeqNumber=-1;
+	private volatile long largestReceivedSeqNumber=0;
 
 	//ACK event related
 
@@ -233,7 +233,6 @@ public class UDTReceiver {
 			}
 			processUDTPacket(packet);
 		}
-		//else System.out.println("no packet.");
 		Thread.yield();
 	}
 
@@ -337,7 +336,6 @@ public class UDTReceiver {
 	
 	protected void onDataPacketReceived(DataPacket dp)throws IOException{
 		long currentSequenceNumber = dp.getPacketSequenceNumber();
-		
 		//check whether to drop this packet
 		n++;
 		if(dropRate>0 && n % dropRate == 0){
@@ -412,6 +410,7 @@ public class UDTReceiver {
 	protected void sendNAK(List<Long>sequenceNumbers)throws IOException{
 		if(sequenceNumbers.size()==0)return;
 		NegativeAcknowledgement nAckPacket= new NegativeAcknowledgement();
+		
 		nAckPacket.addLossInfo(sequenceNumbers);
 		nAckPacket.setSession(session);
 		nAckPacket.setDestinationID(session.getDestination().getSocketID());

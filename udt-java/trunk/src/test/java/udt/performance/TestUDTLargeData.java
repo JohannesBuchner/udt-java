@@ -7,10 +7,12 @@ import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import udt.NullCongestionControl;
 import udt.UDTClient;
 import udt.UDTInputStream;
 import udt.UDTReceiver;
 import udt.UDTServerSocket;
+import udt.UDTSession;
 import udt.UDTSocket;
 import udt.UDTTestBase;
 import udt.util.UDTStatistics;
@@ -20,7 +22,8 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=200;
+	int num_packets=100;
+	
 	//how large is a single packet
 	int size=1*1024*1024;
 	
@@ -30,6 +33,7 @@ public class TestUDTLargeData extends UDTTestBase{
 
 	public void test1()throws Exception{
 		Logger.getLogger("udt").setLevel(Level.INFO);
+		System.setProperty(UDTSession.CC_CLASS, NullCongestionControl.class.getName());
 		
 		UDTReceiver.dropRate=0;
 		TIMEOUT=Integer.MAX_VALUE;
