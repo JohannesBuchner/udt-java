@@ -8,14 +8,14 @@ public class StatisticsHistoryEntry {
 
 	private final boolean isHeading;
 	
-	public StatisticsHistoryEntry(boolean heading, Object ...values){
+	public StatisticsHistoryEntry(boolean heading, long time, Object ...values){
 		this.values=values;
 		this.isHeading=heading;
-		this.timestamp=System.currentTimeMillis();
+		this.timestamp=time;
 	}
 
 	public StatisticsHistoryEntry(Object ...values){
-		this(false,values);
+		this(false,System.currentTimeMillis(),values);
 	}
 
 	/**

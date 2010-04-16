@@ -148,6 +148,7 @@ public class SendFile extends Application{
 					long end=System.currentTimeMillis();
 					System.out.println(socket.getSession().getStatistics().toString());
 					System.out.println("[SendFile] Rate: "+1000*size/1024/1024/(end-start)+" MBytes/sec.");
+					socket.getSession().getStatistics().writeParameterHistory(new File("udtstats-"+System.currentTimeMillis()+".csv"));
 				}finally{
 					fis.close();
 				}

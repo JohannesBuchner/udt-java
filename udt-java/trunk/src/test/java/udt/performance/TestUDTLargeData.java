@@ -79,8 +79,8 @@ public class TestUDTLargeData extends UDTTestBase{
 		
 		assertEquals(md5_sent,md5_received);
 		
-		//store stat history to file
-		client.getStatistics().writeParameterHistory(new File("/tmp/udtstats-"+System.currentTimeMillis()));
+		//store stat history to csv file
+		client.getStatistics().writeParameterHistory(File.createTempFile("/udtstats-",".csv"));
 	}
 	
 	long total=0;

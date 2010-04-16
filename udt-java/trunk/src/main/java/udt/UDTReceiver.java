@@ -33,7 +33,6 @@
 package udt;
 import java.io.IOException;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -111,9 +110,9 @@ public class UDTReceiver {
 	long packetArrivalSpeed;
 
 	//round trip time, calculated from ACK/ACK2 pairs
-	long roundTripTime=1000;
+	long roundTripTime=10*Util.getSYNTime();
 	//round trip time variance
-	long roundTripTimeVar=1000;
+	long roundTripTimeVar=roundTripTime/2;
 
 	//to check the ACK, NAK, or EXP timer
 	private long nextACK;
@@ -127,8 +126,6 @@ public class UDTReceiver {
 	private long nextEXP;
 	//microseconds to next EXP event
 	private long EXP_INTERVAL=1000000;
-
-	private boolean haveUnacknowledgedData=false;
 
 	//buffer size for storing data
 	private final long bufferSize;
@@ -231,7 +228,7 @@ public class UDTReceiver {
 					needEXPReset=true;
 				}
 			}
-			if(haveUnacknowledgedData || needEXPReset){
+			if(needEXPReset){
 				nextEXP=Util.getCurrentTime()+EXP_INTERVAL;
 			}
 			processUDTPacket(packet);
@@ -317,7 +314,6 @@ public class UDTReceiver {
 		//(3).Check the packet type and process it according to this.
 		if(p instanceof DataPacket){
 			DataPacket dp=(DataPacket)p;
-			haveUnacknowledgedData=true;
 			onDataPacketReceived(dp);
 		}
 
@@ -427,7 +423,6 @@ public class UDTReceiver {
 		Acknowledgement acknowledgmentPkt=buildLightAcknowledgement(ackNumber);
 		endpoint.doSend(acknowledgmentPkt);
 		statistics.incNumberOfACKSent();
-		haveUnacknowledgedData=false;
 		return acknowledgmentPkt.getAckSequenceNumber();
 	}
 
@@ -444,7 +439,6 @@ public class UDTReceiver {
 		
 		statistics.incNumberOfACKSent();
 		statistics.setPacketArrivalRate(packetArrivalSpeed, estimateLinkCapacity);
-		haveUnacknowledgedData=false;
 		return acknowledgmentPkt.getAckSequenceNumber();
 	}
 
