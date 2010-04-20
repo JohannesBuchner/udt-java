@@ -170,6 +170,7 @@ public class UDTSocket {
 		int chunksize=session.getDatagramSize()-24;//need some bytes for the header
 		ByteBuffer bb=ByteBuffer.wrap(data,offset,length);
 		long seqNo=0;
+		int i=0;
 		while(bb.remaining()>0){
 			int len=Math.min(bb.remaining(),chunksize);
 			byte[]chunk=new byte[len];
@@ -182,8 +183,9 @@ public class UDTSocket {
 			packet.setData(chunk);
 			//put the packet into the send queue
 			while(!sender.sendUdtPacket(packet, timeout, units)){
-				System.out.println("SOCKET WAIT");
+				Thread.sleep(1);
 			}
+			i++;
 		}
 		if(length>0)active=true;
 	}

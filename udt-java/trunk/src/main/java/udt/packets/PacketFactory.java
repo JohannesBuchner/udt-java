@@ -76,31 +76,31 @@ public class PacketFactory {
 			packet=new ConnectionHandshake(controlInformation);
 		}
 		//TYPE 0001:1
-		if(ControlPacketType.KEEP_ALIVE.ordinal()==pktType){
+		else if(ControlPacketType.KEEP_ALIVE.ordinal()==pktType){
 			packet=new KeepAlive();
 		}
 		//TYPE 0010:2
-		if(ControlPacketType.ACK.ordinal()==pktType){
+		else if(ControlPacketType.ACK.ordinal()==pktType){
 			packet=new Acknowledgement(controlInformation);
 		}
 		//TYPE 0011:3
-		if(ControlPacketType.NAK.ordinal()==pktType){
+		else if(ControlPacketType.NAK.ordinal()==pktType){
 			packet=new NegativeAcknowledgement(controlInformation);
 		}
 		//TYPE 0101:5
-		if(ControlPacketType.SHUTDOWN.ordinal()==pktType){
+		else if(ControlPacketType.SHUTDOWN.ordinal()==pktType){
 			packet=new Shutdown();
 		}
 		//TYPE 0110:6
-		if(ControlPacketType.ACK2.ordinal()==pktType){
+		else if(ControlPacketType.ACK2.ordinal()==pktType){
 			packet=new Acknowledgment2(controlInformation);
 		}
 		//TYPE 0111:7
-		if(ControlPacketType.MESSAGE_DROP_REQUEST.ordinal()==pktType){
+		else if(ControlPacketType.MESSAGE_DROP_REQUEST.ordinal()==pktType){
 			packet=new MessageDropRequest(controlInformation);
 		}
 		//TYPE 1111:8
-		if(ControlPacketType.USER_DEFINED.ordinal()==pktType){
+		else if(ControlPacketType.USER_DEFINED.ordinal()==pktType){
 			packet=new UserDefined(controlInformation);
 		}
 		

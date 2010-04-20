@@ -6,15 +6,16 @@ import java.net.InetAddress;
 import java.util.Random;
 
 import junit.framework.TestCase;
+import udt.UDPEndPoint;
 
 /**
  * send some data over a UDP connection and measure performance
  */
 public class UDPTest extends TestCase {
 
-	final int num_packets=100*1000;
-	final int packetSize=1500;
-	
+	final int num_packets=5*1000;
+	final int packetSize=UDPEndPoint.DATAGRAM_SIZE;
+
 	public void test1()throws Exception{
 		runServer();
 		//client socket
@@ -42,11 +43,11 @@ public class UDPTest extends TestCase {
 		System.out.println("Rate "+num_packets+" packets/sec");
 		System.out.println("Server received: "+total);
 	}
-	
+
 	int N=0;
 	long total=0;
 	volatile boolean serverRunning=true;
-	
+
 	private void runServer()throws Exception{
 		//server socket
 		final DatagramSocket serverSocket=new DatagramSocket(65321);
@@ -56,11 +57,15 @@ public class UDPTest extends TestCase {
 				try{
 					byte[]buf=new byte[packetSize];
 					DatagramPacket dp=new DatagramPacket(buf,buf.length);
+					long start=System.currentTimeMillis();
 					while(true){
 						serverSocket.receive(dp);
 						total+=dp.getLength();
 						if(total==N)break;
 					}
+					long end=System.currentTimeMillis();
+					System.out.println("Server time: "+(end-start)+" ms.");
+
 				}
 				catch(Exception e){
 					e.printStackTrace();

@@ -39,10 +39,18 @@ public class NullCongestionControl implements CongestionControl {
 	public void onTimeout() {
 	}
 
-	public void setPacketArrivalRate(long rate, long linkCapacity) {
+	public void updatePacketArrivalRate(long rate, long linkCapacity) {
 	}
 
 	public void setRTT(long rtt, long rttVar) {
+	}
+
+	public long getEstimatedLinkCapacity() {
+		return 0;
+	}
+
+	public long getPacketArrivalRate() {
+		return 0;
 	}
 
 }

@@ -58,11 +58,27 @@ public class PacketPairWindow extends CircularArray<Long>{
 	 */
 	public double computeMedianTimeInterval(){
 		int num=haveOverflow?max:Math.min(max, position);
-		double total=0;
+		double median=0;
 		for(int i=0; i<num;i++){
-			total+=circularArray.get(i).doubleValue();	
+			median+=circularArray.get(i).doubleValue();	
 		}
-		return total/num;
+		median=median/num;
+		//median filtering
+		double upper=median*8;
+		double lower=median/8;
+		double total = 0;
+		double val=0;
+		int count=0;
+		for(int i=0; i<num;i++){
+			val=circularArray.get(i).doubleValue();
+			if(val<upper && val>lower){
+				total+=val;
+				count++;
+			}
+		}
+		median=total/count;
+		//System.out.println("median "+median);
+		return median;
 	}
 	
 	/**
@@ -70,7 +86,8 @@ public class PacketPairWindow extends CircularArray<Long>{
 	 * packet pair window
 	 * @return number of packets per second
 	 */
-	public double getEstimatedLinkCapacity(){
-		return 1e6/computeMedianTimeInterval();
+	public long getEstimatedLinkCapacity(){
+		long res=(long)Math.ceil(1000000/computeMedianTimeInterval());
+		return res;
 	}
 }

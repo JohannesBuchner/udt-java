@@ -8,15 +8,17 @@ import udt.util.Util;
 public class UDTCongestionControl implements CongestionControl {
 
 	private final UDTSession session;
+	
 	private final UDTStatistics statistics;
+	
 	//round trip time in microseconds
-	private long roundTripTime=10*Util.getSYNTime();
+	private long roundTripTime=2*Util.getSYNTime();
 	
 	//rate in packets per second
-	private long packetArrivalRate=100;
+	private long packetArrivalRate=0;
 	
 	//link capacity in packets per second
-	private long estimatedLinkCapacity;
+	private long estimatedLinkCapacity=0;
 	
 	long maxControlWindowSize=128;
 
@@ -58,15 +60,14 @@ public class UDTCongestionControl implements CongestionControl {
 	public UDTCongestionControl(UDTSession session){
 		this.session=session;
 		this.statistics=session.getStatistics();
-		lastDecreaseSeqNo= session.getInitialSequenceNumber()-1;
+		lastDecreaseSeqNo=session.getInitialSequenceNumber()-1;
 		init();
 	}
 
 	/* (non-Javadoc)
 	 * @see udt.CongestionControl#init()
 	 */
-	public void init() {
-		
+	public void init() {	
 	}
 
 	/* (non-Javadoc)
@@ -79,16 +80,27 @@ public class UDTCongestionControl implements CongestionControl {
 	/* (non-Javadoc)
 	 * @see udt.CongestionControl#setPacketArrivalRate(long, long)
 	 */
-	public void setPacketArrivalRate(long rate, long linkCapacity){
-		this.packetArrivalRate=rate;
-		this.estimatedLinkCapacity=linkCapacity;
+	public void updatePacketArrivalRate(long rate, long linkCapacity){
+		//see spec p. 14.
+		if(packetArrivalRate>0)packetArrivalRate=(packetArrivalRate*7+rate)/8;
+		else packetArrivalRate=rate;
+		if(estimatedLinkCapacity>0)estimatedLinkCapacity=(estimatedLinkCapacity*7+linkCapacity)/8;
+		else estimatedLinkCapacity=linkCapacity;
+	}
+
+	public long getPacketArrivalRate() {
+		return packetArrivalRate;
+	}
+
+	public long getEstimatedLinkCapacity() {
+		return estimatedLinkCapacity;
 	}
 
 	/* (non-Javadoc)
 	 * @see udt.CongestionControl#getSendInterval()
 	 */
 	public double getSendInterval(){
-		return packetSendingPeriod ;
+		return packetSendingPeriod;
 	}
 	
 	/**
@@ -96,7 +108,7 @@ public class UDTCongestionControl implements CongestionControl {
 	 * @return
 	 */
 	public long getCongestionWindowSize(){
-		return 2048;//congestionWindowSize;
+		return congestionWindowSize;
 	}
 
 	/* (non-Javadoc)
@@ -109,6 +121,7 @@ public class UDTCongestionControl implements CongestionControl {
 		//1.if it is  in slow start phase,set the congestion window size 
 		//to the product of packet arrival rate and(rtt +SYN)
 		double A=packetArrivalRate*(roundTripTime+Util.getSYNTime());
+		//System.out.println("rate "+packetArrivalRate+" rtt "+roundTripTime+" A: "+A);
 		if(slowStartPhase){
 			congestionWindowSize=16;
 			slowStartPhase=false;
@@ -120,26 +133,26 @@ public class UDTCongestionControl implements CongestionControl {
 		//4.compute the number of sent packets to be increase in the next SYN period
 		//and update the send intervall
 		if(estimatedLinkCapacity<= packetArrivalRate){
-			numOfIncreasingPacket= 1/maxSegmentSize;
+			numOfIncreasingPacket= 1.0/maxSegmentSize;
 		}else{
 			numOfIncreasingPacket=computeNumOfIncreasingPacket();
 		}
 		//4.update the send period :
-		packetSendingPeriod=packetSendingPeriod*Util.getSYNTimeSeconds()/
-					(packetSendingPeriod*numOfIncreasingPacket+Util.getSYNTimeSeconds());
+		double factor=Util.getSYNTimeD()/(packetSendingPeriod*numOfIncreasingPacket+Util.getSYNTimeD());
+		packetSendingPeriod=packetSendingPeriod*factor;
 		statistics.setSendPeriod(packetSendingPeriod);
 	}
 
-	final double Beta=0.0000015/UDPEndPoint.DATAGRAM_SIZE;
+	//see spec page 16
+	final double BetaDivPS=0.0000015/UDPEndPoint.DATAGRAM_SIZE;
 	private double computeNumOfIncreasingPacket (){
-		long B,C,S;
-		B=estimatedLinkCapacity;
-		C=packetArrivalRate;
-		S=UDPEndPoint.DATAGRAM_SIZE;
-		
-		double logBase10=Math.log10( S*(B-C)*8 );
-		double power10 = Math.pow( 10.0,Math.ceil (logBase10) )* Beta;
-		double inc = Math.max(power10, 1/S);
+		long B=estimatedLinkCapacity;
+		double C=1.0/packetSendingPeriod;
+		if(B<=C)return C;
+		long PS=UDPEndPoint.DATAGRAM_SIZE;
+		double exp=Math.ceil(Math.log10((B-C)*PS*8));
+		double power10 = Math.pow( 10.0, exp)* BetaDivPS;
+		double inc = Math.max(power10, 1/PS);
 		return inc;
 	}
 	
@@ -164,6 +177,7 @@ public class UDTCongestionControl implements CongestionControl {
 			return;
 		}
 
+		
 		//start new congestion epoch
 		if(firstBiggestlossSeqNo>lastDecreaseSeqNo){
 			// 2)If this NAK starts a new congestion epoch

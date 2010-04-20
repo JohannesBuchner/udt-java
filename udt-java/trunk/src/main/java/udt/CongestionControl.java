@@ -19,12 +19,18 @@ public interface CongestionControl {
 	public abstract void setRTT(long rtt, long rttVar);
 
 	/**
-	 * set packet arrival rate and link capacity
+	 * update packet arrival rate and link capacity with the
+	 * values received in an ACK packet
 	 * @param rate
 	 * @param linkCapacity
 	 */
-	public abstract void setPacketArrivalRate(long rate, long linkCapacity);
+	public abstract void updatePacketArrivalRate(long rate, long linkCapacity);
 
+	public long getPacketArrivalRate();
+	
+	public long getEstimatedLinkCapacity();
+
+	
 	/**
 	 * Inter-packet interval in seconds
 	 * @return 
@@ -55,13 +61,13 @@ public interface CongestionControl {
 	public abstract void onTimeout();
 
 	/**
-	 * Callback function to be called when a data is sent.
+	 * Callback function to be called when a data packet is sent.
 	 * @param packetSeqNo: the data sequence number.
 	 */
 	public abstract void onPacketSend(long packetSeqNo);
 
 	/**
-	 * Callback function to be called when a data is received.
+	 * Callback function to be called when a data packet is received.
 	 * @param packetSeqNo: the data sequence number.
 	 */
 	public abstract void onPacketReceive(long packetSeqNo);
