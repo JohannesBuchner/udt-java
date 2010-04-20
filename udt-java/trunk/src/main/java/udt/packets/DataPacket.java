@@ -64,7 +64,7 @@ public class DataPacket implements UDTPacket, Comparable<DataPacket>{
 	}
 	
 	void decode(byte[]encodedData,int length){
-		packetSequenceNumber =PacketUtil.decode(encodedData, 0);
+		packetSequenceNumber=PacketUtil.decode(encodedData, 0);
 		messageNumber=PacketUtil.decode(encodedData, 4);
 		timeStamp=PacketUtil.decode(encodedData, 8);
 		destinationID=PacketUtil.decode(encodedData, 12);

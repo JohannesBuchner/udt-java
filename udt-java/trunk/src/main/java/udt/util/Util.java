@@ -47,7 +47,7 @@ import udt.UDPEndPoint;
 public class Util {
 
 	/**
-	 * get the current system time in microseconds
+	 * get the current timer value in microseconds
 	 * @return
 	 */
 	public static long getCurrentTime(){
@@ -61,6 +61,11 @@ public class Util {
 	public static long getSYNTime(){
 		return 10000;
 	}
+	
+	public static double getSYNTimeD(){
+		return 10000.0;
+	}
+	
 	/**
 	 * get the SYN time in seconds. The SYN time is 0.01 seconds = 10000 microseconds
 	 * @return

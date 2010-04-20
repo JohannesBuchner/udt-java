@@ -68,9 +68,9 @@ public class UDTSender {
 	private final UDPEndPoint endpoint;
 
 	private final UDTSession session;
-	
+
 	private final UDTStatistics statistics;
-	
+
 	//sendLossList store the sequence numbers of lost packets
 	//feed back by the receiver through NAK pakets
 	private final SenderLossList senderLossList;
@@ -96,25 +96,31 @@ public class UDTSender {
 	//last acknowledge number, initialised to the initial sequence number
 	private long lastAckSequenceNumber;
 
+	//instant when the last packet was sent
+	private long lastSentTime=0;
+
 	//size of the send queue
-	public static final int MAX_SIZE=1024;
+	public final int sendQueueLength;
 
 	private volatile boolean stopped=false;
 
-	private volatile AtomicReference<CountDownLatch> latchRef=new AtomicReference<CountDownLatch>();
-	
+	private volatile AtomicReference<CountDownLatch> waitForAckLatch=new AtomicReference<CountDownLatch>();
+
+	private volatile AtomicReference<CountDownLatch> waitForSeqAckLatch=new AtomicReference<CountDownLatch>();
+
 	public UDTSender(UDTSession session,UDPEndPoint endpoint){
+		if(!session.isReady())throw new IllegalStateException("UDTSession is not ready.");
 		this.endpoint= endpoint;
 		this.session=session;
-		this.statistics=session.getStatistics();
-		if(!session.isReady())throw new IllegalStateException("UDTSession is not ready.");
 		
+		statistics=session.getStatistics();
+		sendQueueLength=64;//session.getFlowWindowSize();
 		senderLossList=new SenderLossList();
-		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(MAX_SIZE,0.75f,2); 
-		sendQueue = new LinkedBlockingQueue<DataPacket>(MAX_SIZE);  
+		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(sendQueueLength,0.75f,2); 
+		sendQueue = new LinkedBlockingQueue<DataPacket>(sendQueueLength);  
 		lastAckSequenceNumber=session.getInitialSequenceNumber();
-		
-		latchRef.set(new CountDownLatch(1));
+		waitForAckLatch.set(new CountDownLatch(1));
+		waitForSeqAckLatch.set(new CountDownLatch(1));
 		start();
 	}
 
@@ -130,6 +136,7 @@ public class UDTSender {
 					ie.printStackTrace();
 				}
 				catch(IOException ex){
+					ex.printStackTrace();
 					logger.log(Level.SEVERE,"",ex);
 				}
 				logger.info("STOPPING SENDER for "+session);
@@ -195,20 +202,25 @@ public class UDTSender {
 	}
 
 	protected void onAcknowledge(Acknowledgement acknowledgement)throws IOException{
-		latchRef.get().countDown();
+		waitForAckLatch.get().countDown();
+		waitForSeqAckLatch.get().countDown();
+		
 		CongestionControl cc=session.getCongestionControl();
-		if(acknowledgement.getPacketReceiveRate()>0){
-			long rtt=acknowledgement.getRoundTripTime();
+		long rtt=acknowledgement.getRoundTripTime();
+		if(rtt>0){
 			long rttVar=acknowledgement.getRoundTripTimeVar();
 			cc.setRTT(rtt,rttVar);
-			long rate=acknowledgement.getPacketReceiveRate();
-			long linkCapacity=acknowledgement.getEstimatedLinkCapacity();
-			cc.setPacketArrivalRate(rate, linkCapacity);
 			statistics.setRTT(rtt, rttVar);
-			statistics.setPacketArrivalRate(rate, linkCapacity);
 		}
-		cc.onACK(acknowledgement.getAckNumber());
+		long rate=acknowledgement.getPacketReceiveRate();
+		if(rate>0){
+			long linkCapacity=acknowledgement.getEstimatedLinkCapacity();
+			cc.updatePacketArrivalRate(rate, linkCapacity);
+			statistics.setPacketArrivalRate(cc.getPacketArrivalRate(), cc.getEstimatedLinkCapacity());
+		}
+
 		long ackNumber=acknowledgement.getAckNumber();
+		cc.onACK(ackNumber);
 		//need to remove all sequence numbers up the ack number from the sendBuffer
 		boolean removed=false;
 		for(long s=lastAckSequenceNumber;s<ackNumber;s++){
@@ -224,7 +236,6 @@ public class UDTSender {
 		sendAck2(ackNumber);
 		statistics.incNumberOfACKReceived();
 		statistics.storeParameters();
-		
 	}
 
 	/**
@@ -232,8 +243,13 @@ public class UDTSender {
 	 * @param nak
 	 */
 	protected void onNAKPacketReceived(NegativeAcknowledgement nak){
+		waitForAckLatch.get().countDown();
+
 		for(Integer i: nak.getDecodedLossInfo()){
 			senderLossList.insert(new SenderLossListEntry(i));
+		}
+		if(logger.isLoggable(Level.FINER)){
+			logger.finer("NAK for "+nak.getDecodedLossInfo().size()+" packets: "+nak.getDecodedLossInfo());
 		}
 		session.getCongestionControl().onNAK(nak.getDecodedLossInfo());
 		//reset EXP. EXP is in the receiver currently.... maybe move to SOCKET?
@@ -253,7 +269,6 @@ public class UDTSender {
 
 	protected void sendAck2(long ackSequenceNumber)throws IOException{
 		Acknowledgment2 ackOfAckPkt = new Acknowledgment2();
-		ackOfAckPkt.setDestinationID(0L);
 		ackOfAckPkt.setAckSequenceNumber(ackSequenceNumber);
 		ackOfAckPkt.setSession(session);
 		ackOfAckPkt.setDestinationID(session.getDestination().getSocketID());
@@ -263,7 +278,6 @@ public class UDTSender {
 	/**
 	 * sender algorithm
 	 */
-	long lastSentTime=0;
 	public void senderAlgorithm()throws InterruptedException, IOException{
 		//if the sender's loss list is not empty 
 		SenderLossListEntry entry=senderLossList.getFirstEntry();
@@ -287,34 +301,37 @@ public class UDTSender {
 			}catch (Exception e) {
 				logger.log(Level.WARNING,"",e);
 			}
+		//	return;
 		}
 
-		else {
-			//if the number of unacknowledged data packets does not exceed the congestion 
-			//and the flow window sizes, pack a new packet
-			int unAcknowledged=unacknowledged.get();
-			if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
-					&& unAcknowledged<session.getFlowWindowSize()){
-				double snd=session.getCongestionControl().getSendInterval();
-				if(Util.getCurrentTime()-lastSentTime<snd){
-					statistics.incNumberOfCCSlowDownEvents();
-					return;
-				}
-				DataPacket dp=sendQueue.poll(100,TimeUnit.MILLISECONDS);
-				if(dp!=null){
-					lastSentTime=Util.getCurrentTime();
-					send(dp);
-					largestSentSequenceNumber=dp.getPacketSequenceNumber();
-				}
-			}else{
-				//should we *really* wait for an ack?!
-				if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
-					statistics.incNumberOfCCWindowExceededEvents();
-				}
+		//if the number of unacknowledged data packets does not exceed the congestion 
+		//and the flow window sizes, pack a new packet
+		int unAcknowledged=unacknowledged.get();
+		double snd=session.getCongestionControl().getSendInterval();
+		if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
+				&& unAcknowledged<session.getFlowWindowSize()){
+			if(lastSentTime>0 && Util.getCurrentTime()-lastSentTime<snd){
+				statistics.incNumberOfCCSlowDownEvents();
+				return;
 			}
-			Thread.yield();
+			if(sendQueue.size()==0){
+				Thread.yield();
+				return;
+			}
+			DataPacket dp=sendQueue.poll(20,TimeUnit.MILLISECONDS);
+			if(dp!=null){
+				send(dp);
+				lastSentTime=Util.getCurrentTime();
+				largestSentSequenceNumber=dp.getPacketSequenceNumber();
+			}
+		}else{
+			//should we *really* wait for an ack?!
+			if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
+				statistics.incNumberOfCCWindowExceededEvents();
+			}
+			Thread.sleep(1);
+			//waitForAck();
 		}
-		
 	}
 
 	/**
@@ -324,7 +341,6 @@ public class UDTSender {
 		synchronized (sendLock) {
 			for(Long l: sendBuffer.keySet()){
 				senderLossList.insert(new SenderLossListEntry(l));
-				logger.fine("NO ACK FOR "+l);
 			}
 		}
 	}
@@ -354,7 +370,7 @@ public class UDTSender {
 	public long getLastAckSequenceNumber(){
 		return lastAckSequenceNumber;
 	}
-	
+
 	boolean haveAcknowledgementFor(long sequenceNumber){
 		return sequenceNumber<=lastAckSequenceNumber;
 	}
@@ -366,19 +382,29 @@ public class UDTSender {
 	boolean haveLostPackets(){
 		return senderLossList.isEmpty();
 	}
-	
+
 	/**
-	 * wait for the next acknowledge
+	 * wait until the given sequence number has been acknowledged
+	 * 
 	 * @throws InterruptedException
 	 */
 	public synchronized void waitForAck(long sequenceNumber)throws InterruptedException{
 		while(!session.isShutdown() && !haveAcknowledgementFor(sequenceNumber)){
-			latchRef.set(new CountDownLatch(1));
-			latchRef.get().await(10, TimeUnit.MILLISECONDS);
+			waitForSeqAckLatch.set(new CountDownLatch(1));
+			waitForSeqAckLatch.get().await(10, TimeUnit.MILLISECONDS);
 		}
 	}
 
-	
+	/**
+	 * wait for the next acknowledge
+	 * @throws InterruptedException
+	 */
+	public synchronized void waitForAck()throws InterruptedException{
+		waitForAckLatch.set(new CountDownLatch(1));
+		waitForAckLatch.get().await(1000, TimeUnit.MILLISECONDS);
+	}
+
+
 	public void stop(){
 		stopped=true;
 	}

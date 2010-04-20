@@ -235,6 +235,8 @@ public class UDPEndPoint {
 	 * </ul> 
 	 * @throws IOException
 	 */
+	private long lastDestID=-1;
+	private UDTSession lastSession;
 	protected void doReceive()throws IOException{
 		try{
 			try{
@@ -265,7 +267,16 @@ public class UDPEndPoint {
 
 				else{
 					//dispatch to existing session
-					UDTSession session=sessions.get(packet.getDestinationID());
+					long dest=packet.getDestinationID();
+					UDTSession session;
+					if(dest==lastDestID){
+						session=lastSession;
+					}
+					else{
+						session=sessions.get(dest);
+						lastSession=session;
+						lastDestID=dest;
+					}
 					if(session==null){
 						logger.warning("Unknown session <"+packet.getDestinationID()+"> requested from <"+peer+"> packet type "+packet.getClass().getName());
 					}

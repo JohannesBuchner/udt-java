@@ -55,15 +55,7 @@ public class SenderLossList {
 	}
 
 	public void remove(long seqNo){
-		Iterator<SenderLossListEntry>iterator=backingList.iterator();
-		while(iterator.hasNext()){
-			SenderLossListEntry e=iterator.next();
-			if(e.getSequenceNumber()==seqNo){
-				iterator.remove();
-				return;
-			}
-		}
-		//backingList.remove(new SenderLossListEntry(seqNo));
+		backingList.remove(new SenderLossListEntry(seqNo));
 	}
 
 	/**

@@ -81,8 +81,8 @@ public class UDTReceiver {
 	private final PacketHistoryWindow packetHistoryWindow;
 
 	//for storing the arrival time of the last received data packet
-	private long lastDataPacketArrivalTime=0;
-	
+	private volatile long lastDataPacketArrivalTime=0;
+
 	//largest received data packet sequence number(LRSN)
 	private volatile long largestReceivedSeqNumber=0;
 
@@ -90,7 +90,7 @@ public class UDTReceiver {
 
 	//last Ack number
 	private long lastAckNumber=0;
-	
+
 	//largest Ack number ever acknowledged by ACK2
 	private volatile long largestAcknowledgedAckNumber=-1;
 
@@ -125,24 +125,24 @@ public class UDTReceiver {
 
 	private long nextEXP;
 	//microseconds to next EXP event
-	private long EXP_INTERVAL=1000000;
+	private long EXP_INTERVAL=2*Util.getSYNTime();
 
 	//buffer size for storing data
 	private final long bufferSize;
-	
+
 	//stores packets to be sent
 	private final BlockingQueue<UDTPacket>handoffQueue=new ArrayBlockingQueue<UDTPacket>(32);
 
 	private Thread receiverThread;
 
 	private volatile boolean stopped=false;
-	
+
 	/**
 	 * if set to true connections will not expire, but will only be
 	 * closed by a Shutdown message
 	 */
 	public static boolean connectionExpiryDisabled=false;
-	
+
 	/**
 	 * create a receiver with a valid {@link UDTSession}
 	 * @param session
@@ -157,8 +157,8 @@ public class UDTReceiver {
 		receiverLossList = new ReceiverLossList();
 		packetPairWindow = new PacketPairWindow(16);
 		nextACK=Util.getCurrentTime()+ACK_INTERVAL;
-		nextNAK=Util.getCurrentTime()+NAK_INTERVAL;
-		nextEXP=Util.getCurrentTime()+EXP_INTERVAL;
+		nextNAK=(long)(Util.getCurrentTime()+1.5*NAK_INTERVAL);
+		nextEXP=Util.getCurrentTime()+2*EXP_INTERVAL;
 		bufferSize=session.getReceiveBufferSize();
 		start();
 	}
@@ -194,7 +194,6 @@ public class UDTReceiver {
 	 * see specification P11.
 	 */
 	public void receiverAlgorithm()throws InterruptedException,IOException{
-
 		//check ACK timer
 		long currentTime=Util.getCurrentTime();
 		if(nextACK<currentTime){
@@ -254,7 +253,7 @@ public class UDTReceiver {
 			return;
 		}else if (ackNumber==lastAckNumber) {
 			//or it is equals to the ackNumber in the last ACK  
-			//and the time interval between these two ACK packets ???
+			//and the time interval between these two ACK packets
 			//is less than 2 RTTs,do not send(stop)
 			long timeOfLastSentAck=ackHistoryWindow.getTime(lastAckNumber);
 			if(Util.getCurrentTime()-timeOfLastSentAck< 2*roundTripTime){
@@ -265,6 +264,7 @@ public class UDTReceiver {
 		//if this ACK is not triggered by ACK timers,send out a light Ack and stop.
 		if(!isTriggeredByTimer){
 			ackSeqNumber=sendLightAcknowledgment(ackNumber);
+			return;
 		}
 		else{
 			//pack the packet speed and link capacity into the ACK packet and send it out.
@@ -320,11 +320,11 @@ public class UDTReceiver {
 			Acknowledgment2 ack2=(Acknowledgment2)p;
 			onAck2PacketReceived(ack2);
 		}
-		
+
 		else if (p instanceof Shutdown){
 			onShutdown();
 		}
-		
+
 		//other packet types?
 
 	}
@@ -333,7 +333,7 @@ public class UDTReceiver {
 	public static int dropRate=0;
 	//number of received data packets
 	private int n=0;
-	
+
 	protected void onDataPacketReceived(DataPacket dp)throws IOException{
 		long currentSequenceNumber = dp.getPacketSequenceNumber();
 		//check whether to drop this packet
@@ -342,13 +342,13 @@ public class UDTReceiver {
 			logger.info("**** TESTING:::: DROPPING PACKET "+currentSequenceNumber+" FOR TESTING");
 			return;
 		}
-	
+
 		long currentDataPacketArrivalTime = Util.getCurrentTime();
 
 		/*(4).if the seqNo of the current data packet is 16n+1,record the
 		time interval between this packet and the last data packet
 		in the packet pair window*/
-		if((currentSequenceNumber%16)==1){
+		if((currentSequenceNumber%16)==1 && lastDataPacketArrivalTime>0){
 			long interval=currentDataPacketArrivalTime -lastDataPacketArrivalTime;
 			packetPairWindow.add(interval);
 		}
@@ -362,7 +362,7 @@ public class UDTReceiver {
 			//no left space in application data buffer->drop this packet
 			return;
 		}
-		
+
 		//(6).number of detected lossed packet
 		/*(6.a).if the number of the current data packet is greater than LSRN+1,
 			put all the sequence numbers between (but excluding) these two values
@@ -378,9 +378,9 @@ public class UDTReceiver {
 				receiverLossList.remove(currentSequenceNumber);
 			}
 		}
-		
+
 		statistics.incNumberOfReceivedDataPackets();
-		
+
 		//(7).Update the LRSN
 		if(currentSequenceNumber>largestReceivedSeqNumber){
 			largestReceivedSeqNumber=currentSequenceNumber;
@@ -410,7 +410,7 @@ public class UDTReceiver {
 	protected void sendNAK(List<Long>sequenceNumbers)throws IOException{
 		if(sequenceNumbers.size()==0)return;
 		NegativeAcknowledgement nAckPacket= new NegativeAcknowledgement();
-		
+
 		nAckPacket.addLossInfo(sequenceNumbers);
 		nAckPacket.setSession(session);
 		nAckPacket.setDestinationID(session.getDestination().getSocketID());
@@ -428,14 +428,14 @@ public class UDTReceiver {
 	protected long sendAcknowledgment(long ackNumber)throws IOException{
 		Acknowledgement acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
 		//set the estimate link capacity
-		estimateLinkCapacity=(long)packetPairWindow.getEstimatedLinkCapacity();
+		estimateLinkCapacity=packetPairWindow.getEstimatedLinkCapacity();
 		acknowledgmentPkt.setEstimatedLinkCapacity(estimateLinkCapacity);
 		//set the packet arrival rate
 		packetArrivalSpeed=(long)packetHistoryWindow.getPacketArrivalSpeed();
 		acknowledgmentPkt.setPacketReceiveRate(packetArrivalSpeed);
-		
+
 		endpoint.doSend(acknowledgmentPkt);
-		
+
 		statistics.incNumberOfACKSent();
 		statistics.setPacketArrivalRate(packetArrivalSpeed, estimateLinkCapacity);
 		return acknowledgmentPkt.getAckSequenceNumber();
@@ -452,10 +452,10 @@ public class UDTReceiver {
 		acknowledgmentPkt.setRoundTripTimeVar(roundTripTimeVar);
 		//set the buffer size
 		acknowledgmentPkt.setBufferSize(bufferSize);
-		
+
 		acknowledgmentPkt.setDestinationID(session.getDestination().getSocketID());
 		acknowledgmentPkt.setSession(session);
-		
+
 		return acknowledgmentPkt;
 	}
 
@@ -469,21 +469,24 @@ public class UDTReceiver {
          rtt) / 8.  <br/>
       4) Update RTTVar by: RTTVar = (RTTVar * 3 + abs(RTT - rtt)) / 4.  <br/>
       5) Update both ACK and NAK period to 4 * RTT + RTTVar + SYN.  <br/>
-     */
+	 */
 	protected void onAck2PacketReceived(Acknowledgment2 ack2){
 		AckHistoryEntry entry=ackHistoryWindow.getEntry(ack2.getAckSequenceNumber());
 		if(entry!=null){
 			long ackNumber=entry.getAckNumber();
 			largestAcknowledgedAckNumber=Math.max(ackNumber, largestAcknowledgedAckNumber);
+			
 			long rtt=entry.getAge();
-			roundTripTime = (roundTripTime*7 + rtt)/8;
+			if(roundTripTime>0)roundTripTime = (roundTripTime*7 + rtt)/8;
+			else roundTripTime = rtt;
 			roundTripTimeVar = (roundTripTimeVar* 3 + Math.abs(roundTripTimeVar- rtt)) / 4;
+
 			ACK_INTERVAL=4*roundTripTime+roundTripTimeVar+Util.getSYNTime();
 			NAK_INTERVAL=ACK_INTERVAL;
 			statistics.setRTT(roundTripTime, roundTripTimeVar);
 		}
 	}
-	
+
 	protected void sendKeepAlive()throws IOException{
 		KeepAlive ka=new KeepAlive();
 		ka.setDestinationID(session.getDestination().getSocketID());
@@ -504,12 +507,13 @@ public class UDTReceiver {
 		nextEXP=Util.getCurrentTime()+EXP_INTERVAL;
 		expCount=0;
 	}
-	
+
 	protected void onShutdown()throws IOException{
 		stop();
 	}
 
 	public void stop()throws IOException{
+		System.out.println("STOP");
 		stopped=true;
 		session.getSocket().close();
 		//stop our sender as well
@@ -522,5 +526,5 @@ public class UDTReceiver {
 		sb.append("LossList: "+receiverLossList);
 		return sb.toString();
 	}
-	
+
 }
