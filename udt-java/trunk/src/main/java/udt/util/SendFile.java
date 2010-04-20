@@ -42,6 +42,7 @@ import java.util.logging.Logger;
 
 import udt.UDTInputStream;
 import udt.UDTOutputStream;
+import udt.UDTReceiver;
 import udt.UDTServerSocket;
 import udt.UDTSocket;
 import udt.packets.PacketUtil;
@@ -72,6 +73,7 @@ public class SendFile extends Application{
 	public void run(){
 		configure();
 		try{
+			UDTReceiver.connectionExpiryDisabled=true;
 			InetAddress myHost=localIP!=null?InetAddress.getByName(localIP):InetAddress.getLocalHost();
 			UDTServerSocket server=new UDTServerSocket(myHost,serverPort);
 			while(true){
@@ -134,7 +136,7 @@ public class SendFile extends Application{
 				bb.get(fileName);
 
 				File file=new File(new String(fileName));
-				System.out.println("[SendFile] File requested: "+file.getPath());
+				System.out.println("[SendFile] File requested: '"+file.getPath()+"'");
 
 				FileInputStream fis=new FileInputStream(file);
 				try{

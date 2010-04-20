@@ -13,7 +13,10 @@ public class TestSendFileReceiveFile extends UDTTestBase{
 	
 	public void test1()throws Exception{
 		runServer();
-		while(!serverStarted)Thread.sleep(100);
+		do{
+			Thread.sleep(500);
+		}while(!serverStarted);
+		
 		File f=new File("src/test/java/datafile");
 		File tmp=File.createTempFile("udtest-", null);
 		
@@ -28,9 +31,9 @@ public class TestSendFileReceiveFile extends UDTTestBase{
 	private void runServer(){
 		Runnable r=new Runnable(){
 			public void run(){
-				serverStarted=true;
 				String []args=new String[]{"65321"};
 				try{
+					serverStarted=true;
 					SendFile.main(args);
 				}catch(Exception ex){
 					ex.printStackTrace();
