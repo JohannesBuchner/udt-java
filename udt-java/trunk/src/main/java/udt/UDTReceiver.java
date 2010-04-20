@@ -125,7 +125,7 @@ public class UDTReceiver {
 
 	private long nextEXP;
 	//microseconds to next EXP event
-	private long EXP_INTERVAL=2*Util.getSYNTime();
+	private long EXP_INTERVAL=10*Util.getSYNTime();
 
 	//buffer size for storing data
 	private final long bufferSize;
@@ -513,7 +513,6 @@ public class UDTReceiver {
 	}
 
 	public void stop()throws IOException{
-		System.out.println("STOP");
 		stopped=true;
 		session.getSocket().close();
 		//stop our sender as well

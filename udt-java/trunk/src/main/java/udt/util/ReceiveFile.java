@@ -40,6 +40,7 @@ import java.nio.ByteBuffer;
 import udt.UDTClient;
 import udt.UDTInputStream;
 import udt.UDTOutputStream;
+import udt.UDTReceiver;
 
 /**
  * helper class for receiving a single file via UDT
@@ -66,6 +67,7 @@ public class ReceiveFile extends Application{
 	public void run(){
 		configure();
 		try{
+			UDTReceiver.connectionExpiryDisabled=true;
 			InetAddress myHost=localIP!=null?InetAddress.getByName(localIP):InetAddress.getLocalHost();
 			UDTClient client=localPort!=-1?new UDTClient(myHost,localPort):new UDTClient(myHost);
 			client.connect(serverHost, serverPort);
