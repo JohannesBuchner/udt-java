@@ -110,7 +110,7 @@ public class UDTReceiver {
 	long packetArrivalSpeed;
 
 	//round trip time, calculated from ACK/ACK2 pairs
-	long roundTripTime=10*Util.getSYNTime();
+	long roundTripTime=50*1000;
 	//round trip time variance
 	long roundTripTimeVar=roundTripTime/2;
 
@@ -125,7 +125,12 @@ public class UDTReceiver {
 
 	private long nextEXP;
 	//microseconds to next EXP event
-	private long EXP_INTERVAL=10*Util.getSYNTime();
+	private long EXP_INTERVAL=Util.getSYNTime();
+
+	//instant when the session was created (for expiry checking)
+	private final long sessionUpSince;
+	//milliseconds to timeout a new session that stays idle
+	private final long IDLE_TIMEOUT = 3*60*1000;
 
 	//buffer size for storing data
 	private final long bufferSize;
@@ -150,6 +155,7 @@ public class UDTReceiver {
 	public UDTReceiver(UDTSession session,UDPEndPoint endpoint){
 		this.endpoint = endpoint;
 		this.session=session;
+		this.sessionUpSince=System.currentTimeMillis();
 		this.statistics=session.getStatistics();
 		if(!session.isReady())throw new IllegalStateException("UDTSession is not ready.");
 		ackHistoryWindow = new AckHistoryWindow(16);
@@ -295,7 +301,7 @@ public class UDTReceiver {
 		UDTSender sender=session.getSocket().getSender();
 		//put all the unacknowledged packets in the senders loss list
 		sender.putUnacknowledgedPacketsIntoLossList();
-		if(expCount>16){
+		if(expCount>16 && System.currentTimeMillis()-sessionUpSince > IDLE_TIMEOUT){
 			if(!connectionExpiryDisabled &&!stopped){
 				sendShutdown();
 				stop();
@@ -508,6 +514,10 @@ public class UDTReceiver {
 		expCount=0;
 	}
 
+	protected void resetEXPCount(){
+		expCount=0;
+	}
+	
 	protected void onShutdown()throws IOException{
 		stop();
 	}

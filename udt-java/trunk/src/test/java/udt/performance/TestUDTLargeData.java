@@ -20,7 +20,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=300;
+	int num_packets=200;
 	
 	//how large is a single packet
 	int size=1*1024*1024;
@@ -34,7 +34,7 @@ public class TestUDTLargeData extends UDTTestBase{
 		//System.setProperty(UDTSession.CC_CLASS, NullCongestionControl.class.getName());
 		UDTReceiver.dropRate=0;
 		TIMEOUT=Integer.MAX_VALUE;
-		UDTReceiver.connectionExpiryDisabled=true;
+		//UDTReceiver.connectionExpiryDisabled=true;
 		doTest();
 	}
 
@@ -109,7 +109,7 @@ public class TestUDTLargeData extends UDTTestBase{
 						c=is.read(buf);
 						if(c<0)break;
 						else{
-							//md5.update(buf, 0, c);
+							md5.update(buf, 0, c);
 							total+=c;
 							Thread.yield();
 						}

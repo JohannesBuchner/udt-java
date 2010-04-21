@@ -18,6 +18,8 @@ public class TestSendFileReceiveFile extends UDTTestBase{
 		}while(!serverStarted);
 		
 		File f=new File("src/test/java/datafile");
+		f=new File("/tmp/200MB");
+		
 		File tmp=File.createTempFile("udtest-", null);
 		
 		String[] args=new String[]{"localhost","65321",f.getAbsolutePath(),tmp.getAbsolutePath()};
