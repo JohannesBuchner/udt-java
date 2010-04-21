@@ -7,62 +7,61 @@ import java.util.logging.Logger;
 import udt.util.UDTStatistics;
 import udt.util.Util;
 
+/**
+ * default UDT congestion control.<br/>
+ * 
+ * The algorithm is adapted from the C++ reference implementation.
+ */
 public class UDTCongestionControl implements CongestionControl {
 
 	private static final Logger logger=Logger.getLogger(UDTCongestionControl.class.getName());
 
 	private final UDTSession session;
-	
+
 	private final UDTStatistics statistics;
-	
+
 	//round trip time in microseconds
 	private long roundTripTime=2*Util.getSYNTime();
-	
+
 	//rate in packets per second
 	private long packetArrivalRate=0;
-	
+
 	//link capacity in packets per second
 	private long estimatedLinkCapacity=0;
-	
-	long maxControlWindowSize=128;
 
 	// Packet sending period = packet send interval, in microseconds
 	private double packetSendingPeriod=1;              
+
 	// Congestion window size, in packets
 	private long congestionWindowSize=16;
-	
-	//number of packets to be increased in the next SYN period
-	private double numOfIncreasingPacket;		
-	
+
 	//last rate increase time (microsecond value)
 	long lastRateIncreaseTime=Util.getCurrentTime();
-	
+
 	/*if in slow start phase*/
 	boolean slowStartPhase=true;
-	
+
 	/*last ACKed seq no*/
 	long lastAckSeqNumber=-1;
-	
+
 	/*max packet seq. no. sent out when last decrease happened*/
 	private	long lastDecreaseSeqNo;
 
-	//value of packetSendPeriod when last decrease happened
-	long lastDecreasePeriod;
-	
 	//NAK counter
-	long nACKCount=1;
-	
+	private long nACKCount=1;
+
 	//number of decreases in a congestion epoch
 	long decCount=1;
-	
+
 	//random threshold on decrease by number of loss events
 	long decreaseRandom=1; 
-	
+
 	//average number of NAKs per congestion
 	long averageNACKNum;
 
-	boolean loss=false;
-	
+	//this flag avoids immediate rate increase after a NAK
+	private boolean loss=false;
+
 	public UDTCongestionControl(UDTSession session){
 		this.session=session;
 		this.statistics=session.getStatistics();
@@ -108,7 +107,7 @@ public class UDTCongestionControl implements CongestionControl {
 	public double getSendInterval(){
 		return packetSendingPeriod;
 	}
-	
+
 	/**
 	 * congestionWindowSize
 	 * @return
@@ -125,7 +124,7 @@ public class UDTCongestionControl implements CongestionControl {
 		if(slowStartPhase){
 			congestionWindowSize+=ackSeqno-lastAckSeqNumber;
 			lastAckSeqNumber = ackSeqno;
-			
+
 			//but not beyond a maximum size
 			if(congestionWindowSize>session.getFlowWindowSize()){
 				System.out.println("slow start ends on ACK");
@@ -137,7 +136,7 @@ public class UDTCongestionControl implements CongestionControl {
 					packetSendingPeriod=(double)congestionWindowSize/(roundTripTime+Util.getSYNTimeD());
 				}
 			}
-			
+
 		}else{
 			//1.if it is  not in slow start phase,set the congestion window size 
 			//to the product of packet arrival rate and(rtt +SYN)
@@ -148,51 +147,51 @@ public class UDTCongestionControl implements CongestionControl {
 			}
 		}
 
-		//no rate increase in slow start
+		//no rate increase during slow start
 		if(slowStartPhase)return;
-		
+
+		//no rate increase "immediately" after a NAK
 		if(loss){
 			loss=false;
 			return;
 		}
-		
-		//4.compute the number of sent packets to be increase in the next SYN period
-		//and update the send intervall
-		numOfIncreasingPacket=computeNumOfIncreasingPacket();
-		
-		//4.update the send period :
+
+		//4. compute the increase in sent packets for the next SYN period
+		double numOfIncreasingPacket=computeNumOfIncreasingPacket();
+
+		//5. update the send period
 		double factor=Util.getSYNTimeD()/(packetSendingPeriod*numOfIncreasingPacket+Util.getSYNTimeD());
 		packetSendingPeriod=factor*packetSendingPeriod;
 		//packetSendingPeriod=0.995*packetSendingPeriod;
 		//System.out.println("dec snd factor "+factor+" to "+packetSendingPeriod);
-		
+
 		statistics.setSendPeriod(packetSendingPeriod);
 	}
 
 	private final long PS=UDPEndPoint.DATAGRAM_SIZE;
 	private final double BetaDivPS=0.0000015/PS;
-	
+
 	//see spec page 16
 	private double computeNumOfIncreasingPacket (){
-		//link capacity and sending speed, in packets per second 
-		double B=estimatedLinkCapacity;
-		double C=1000000.0/packetSendingPeriod;
-		
-		if(B<=C)return 1.0/UDPEndPoint.DATAGRAM_SIZE;
-		
-		double exp=Math.ceil(Math.log10((B-C)*PS*8));
-		double power10 = Math.pow( 10.0, exp)* BetaDivPS;
-		double inc = Math.max(power10, 1/PS);
-		return inc;
+		//difference in link capacity and sending speed, in packets per second 
+		double remaining=estimatedLinkCapacity-1000000.0/packetSendingPeriod;
+
+		if(remaining<=0){
+			return 1.0/UDPEndPoint.DATAGRAM_SIZE;
+		}
+		else{
+			double exp=Math.ceil(Math.log10(remaining*PS*8));
+			double power10 = Math.pow( 10.0, exp)* BetaDivPS;
+			return Math.max(power10, 1/PS);
+		}
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see udt.CongestionControl#onNAK(java.util.List)
 	 */
 	public void onNAK(List<Integer>lossInfo){
 		loss=true;
-		long firstBiggestlossSeqNo=lossInfo.get(lossInfo.size()-1);
-		
+		long firstBiggestlossSeqNo=lossInfo.get(0);
 		nACKCount++;
 		/*1) If it is in slow start phase, set inter-packet interval to 
       	   1/recvrate. Slow start ends. Stop. */
@@ -206,12 +205,10 @@ public class UDTCongestionControl implements CongestionControl {
 			slowStartPhase = false;
 			return;
 		}
-		
+
 		long currentMaxSequenceNumber=session.getSocket().getSender().getCurrentSequenceNumber();
-		
 		// 2)If this NAK starts a new congestion epoch
 		if(firstBiggestlossSeqNo>lastDecreaseSeqNo){
-
 			// -increase inter-packet interval
 			packetSendingPeriod = Math.ceil(packetSendingPeriod*1.125);
 			// -Update AvgNAKNum(the average number of NAKs per congestion)
@@ -224,20 +221,19 @@ public class UDTCongestionControl implements CongestionControl {
 			// -Update LastDecSeq
 			lastDecreaseSeqNo = currentMaxSequenceNumber;
 			// -Stop.
-			statistics.setSendPeriod(packetSendingPeriod);
 		}
-
 		//* 3) If DecCount <= 5, and NAKCount == DecCount * DecRandom: 
-		if(decCount<=5 && nACKCount==decCount*decreaseRandom){
+		else if(decCount<=5 && nACKCount==decCount*decreaseRandom){
 			// a. Update SND period: SND = SND * 1.125; 
 			packetSendingPeriod = Math.ceil(packetSendingPeriod*1.125);
 			// b. Increase DecCount by 1; 
 			decCount++;
 			// c. Record the current largest sent sequence number (LastDecSeq).
 			lastDecreaseSeqNo= currentMaxSequenceNumber;
-			statistics.setSendPeriod(packetSendingPeriod);
-			return;
 		}
+
+		statistics.setSendPeriod(packetSendingPeriod);
+		return;
 	}
 
 	/* (non-Javadoc)
