@@ -107,8 +107,6 @@ public class ClientSession extends UDTSession {
 			}
 			active = true;
 			try{
-				//packet received means we should not yet expire
-				socket.getReceiver().resetEXPTimer();
 				if(packet.forSender()){
 					socket.getSender().receive(lastPacket);
 				}else{
