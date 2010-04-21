@@ -253,10 +253,10 @@ public class UDTSender {
 		statistics.incNumberOfNAKReceived();
 		statistics.storeParameters();
 		
-		//if(logger.isLoggable(Level.FINER)){
-			System.out.println("NAK for "+nak.getDecodedLossInfo().size()+" packets lost, " 
+		if(logger.isLoggable(Level.FINER)){
+			logger.finer("NAK for "+nak.getDecodedLossInfo().size()+" packets lost, " 
 				+"set send period to "+session.getCongestionControl().getSendInterval());
-		//}
+		}
 		
 		return;
 	}
@@ -315,12 +315,9 @@ public class UDTSender {
 		
 		if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
 				&& unAcknowledged<session.getFlowWindowSize()){
-//			if(lastSentTime>0 && Util.getCurrentTime()-lastSentTime<snd){
-//				statistics.incNumberOfCCSlowDownEvents();
-//				return;
-//			}
+
 			if(sendQueue.size()==0){
-				Thread.yield();
+				//Thread.yield();
 				return;
 			}
 			DataPacket dp=sendQueue.poll(20,TimeUnit.MILLISECONDS);
@@ -340,10 +337,12 @@ public class UDTSender {
 		//wait
 		double snd=session.getCongestionControl().getSendInterval();
 		long passed=Util.getCurrentTime()-iterationStart;
+		int x=0;
 		while(snd-passed>0){
-			//busy wait, but we cannot wait with microsecond precision
+			if(x++==0)statistics.incNumberOfCCSlowDownEvents();
+			//we cannot wait with microsecond precision
 			if(snd-passed>750)Thread.sleep(1);
-			statistics.incNumberOfCCSlowDownEvents();
+			else Thread.yield();
 			passed=Util.getCurrentTime()-iterationStart;
 		}
 		
@@ -394,8 +393,9 @@ public class UDTSender {
 		return largestSentSequenceNumber>=sequenceNumber;
 
 	}
+	
 	boolean haveLostPackets(){
-		return senderLossList.isEmpty();
+		return !senderLossList.isEmpty();
 	}
 
 	/**

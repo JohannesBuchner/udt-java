@@ -79,7 +79,6 @@ public class PacketPairWindow extends CircularArray<Long>{
 			}
 		}
 		double res=total/count;
-		//System.out.println("median: "+median+" filtered "+res);
 		return res;
 	}
 	
