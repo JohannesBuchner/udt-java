@@ -3,6 +3,7 @@ package udt.performance;
 import java.io.File;
 import java.net.InetAddress;
 import java.security.MessageDigest;
+import java.text.NumberFormat;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -20,7 +21,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=100;
+	int num_packets=200;
 	
 	//how large is a single packet
 	int size=1*1024*1024;
@@ -38,7 +39,11 @@ public class TestUDTLargeData extends UDTTestBase{
 		doTest();
 	}
 
+	private final NumberFormat format=NumberFormat.getNumberInstance();
+	
 	protected void doTest()throws Exception{
+		format.setMaximumFractionDigits(2);
+		
 		if(!running)runServer();
 		UDTClient client=new UDTClient(InetAddress.getByName("localhost"),12345);
 		client.connect("localhost", 65321);
@@ -58,7 +63,8 @@ public class TestUDTLargeData extends UDTTestBase{
 				long block=System.currentTimeMillis();
 				client.sendBlocking(data);
 				digest.update(data);
-				System.out.println("Sent block <"+i+"> in "+(System.currentTimeMillis()-block)+" ms");
+				double took=System.currentTimeMillis()-block;
+				System.out.println("Sent block <"+i+"> in "+took+" ms, rate: "+format.format(size/(1024*took))+ " Mbytes/sec");
 			}
 			end=System.currentTimeMillis();
 			client.shutdown();
@@ -70,7 +76,7 @@ public class TestUDTLargeData extends UDTTestBase{
 		System.out.println("Done. Sending "+N/1024/1024+" Mbytes took "+(end-start)+" ms");
 		double mbytes=N/(end-start)/1024;
 		double mbit=8*mbytes;
-		System.out.println("Rate: "+(int)mbytes+" Mbytes/sec "+(int)mbit+" Mbit/sec");
+		System.out.println("Rate: "+format.format(mbytes)+" Mbytes/sec "+format.format(mbit)+" Mbit/sec");
 		System.out.println("Server received: "+total);
 		
 		assertEquals(N,total);
@@ -78,7 +84,7 @@ public class TestUDTLargeData extends UDTTestBase{
 		System.out.println("MD5 hash of data received: "+md5_received);
 		System.out.println(client.getStatistics());
 		
-		//assertEquals(md5_sent,md5_received);
+		assertEquals(md5_sent,md5_received);
 		
 		//store stat history to csv file
 		client.getStatistics().writeParameterHistory(File.createTempFile("/udtstats-",".csv"));

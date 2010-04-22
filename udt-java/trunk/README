@@ -17,7 +17,7 @@ To start a file "server",
   
 To download a file from the server,
 
-  bin/receive_file <server_host> <server_port> <remote_filename> <local_filename>
+  bin/receive-file <server_host> <server_port> <remote_filename> <local_filename>
   
 
 #

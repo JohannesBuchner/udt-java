@@ -33,8 +33,8 @@
 package udt;
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -110,7 +110,7 @@ public class UDTReceiver {
 	long packetArrivalSpeed;
 
 	//round trip time, calculated from ACK/ACK2 pairs
-	long roundTripTime=50*1000;
+	long roundTripTime=0;
 	//round trip time variance
 	long roundTripTimeVar=roundTripTime/2;
 
@@ -135,8 +135,8 @@ public class UDTReceiver {
 	//buffer size for storing data
 	private final long bufferSize;
 
-	//stores packets to be sent
-	private final BlockingQueue<UDTPacket>handoffQueue=new ArrayBlockingQueue<UDTPacket>(32);
+	//stores received packets to be sent
+	private final BlockingQueue<UDTPacket>handoffQueue;
 
 	private Thread receiverThread;
 
@@ -162,10 +162,14 @@ public class UDTReceiver {
 		packetHistoryWindow = new PacketHistoryWindow(16);
 		receiverLossList = new ReceiverLossList();
 		packetPairWindow = new PacketPairWindow(16);
-		nextACK=Util.getCurrentTime()+ACK_INTERVAL;
-		nextNAK=(long)(Util.getCurrentTime()+1.5*NAK_INTERVAL);
-		nextEXP=Util.getCurrentTime()+2*EXP_INTERVAL;
+		largestReceivedSeqNumber=session.getInitialSequenceNumber()-1;
 		bufferSize=session.getReceiveBufferSize();
+
+		//incoming packets are ordered by sequence number, with control packets having
+		//preference over data packets
+		handoffQueue=//new ArrayBlockingQueue<UDTPacket>(session.getFlowWindowSize());
+				new PriorityBlockingQueue<UDTPacket>(session.getFlowWindowSize());
+		
 		start();
 	}
 
@@ -174,6 +178,9 @@ public class UDTReceiver {
 		Runnable r=new Runnable(){
 			public void run(){
 				try{
+					nextACK=Util.getCurrentTime()+ACK_INTERVAL;
+					nextNAK=(long)(Util.getCurrentTime()+1.5*NAK_INTERVAL);
+					nextEXP=Util.getCurrentTime()+2*EXP_INTERVAL;
 					while(!stopped){
 						receiverAlgorithm();
 					}
@@ -191,6 +198,8 @@ public class UDTReceiver {
 	/*
 	 * packets are written by the endpoint
 	 */
+	long i=0;
+	long mean=0;
 	protected void receive(UDTPacket p)throws IOException{
 		handoffQueue.offer(p);
 	}
@@ -416,7 +425,6 @@ public class UDTReceiver {
 	protected void sendNAK(List<Long>sequenceNumbers)throws IOException{
 		if(sequenceNumbers.size()==0)return;
 		NegativeAcknowledgement nAckPacket= new NegativeAcknowledgement();
-
 		nAckPacket.addLossInfo(sequenceNumbers);
 		nAckPacket.setSession(session);
 		nAckPacket.setDestinationID(session.getDestination().getSocketID());
@@ -486,7 +494,6 @@ public class UDTReceiver {
 			if(roundTripTime>0)roundTripTime = (roundTripTime*7 + rtt)/8;
 			else roundTripTime = rtt;
 			roundTripTimeVar = (roundTripTimeVar* 3 + Math.abs(roundTripTimeVar- rtt)) / 4;
-
 			ACK_INTERVAL=4*roundTripTime+roundTripTimeVar+Util.getSYNTime();
 			NAK_INTERVAL=ACK_INTERVAL;
 			statistics.setRTT(roundTripTime, roundTripTimeVar);

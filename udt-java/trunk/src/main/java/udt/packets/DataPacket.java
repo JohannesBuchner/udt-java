@@ -38,7 +38,7 @@ import java.io.IOException;
 import udt.UDTPacket;
 import udt.UDTSession;
 
-public class DataPacket implements UDTPacket, Comparable<DataPacket>{
+public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 
 	private byte[] data ;
 	private long packetSequenceNumber;
@@ -178,9 +178,7 @@ public class DataPacket implements UDTPacket, Comparable<DataPacket>{
 		this.session = session;
 	}
 
-	//Compare data packets by their sequence number
-	public int compareTo(DataPacket other){
-		return (int)(other.packetSequenceNumber-packetSequenceNumber);
+	public int compareTo(UDTPacket other){
+		return (int)(getPacketSequenceNumber()-other.getPacketSequenceNumber());
 	}
-
 }

@@ -44,7 +44,7 @@ public class SenderLossList {
 	 * create a new sender lost list
 	 */
 	public SenderLossList(){
-		backingList = new PriorityBlockingQueue<SenderLossListEntry>(16);
+		backingList = new PriorityBlockingQueue<SenderLossListEntry>(32);
 	}
 
 	public void insert(SenderLossListEntry obj){

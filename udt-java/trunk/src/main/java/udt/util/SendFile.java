@@ -36,6 +36,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.text.NumberFormat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
@@ -60,9 +61,10 @@ public class SendFile extends Application{
 
 	//TODO configure pool size
 	private final ExecutorService threadPool=Executors.newFixedThreadPool(3);
-		
+
 	public SendFile(int serverPort){
 		this.serverPort=serverPort;
+	
 	}
 	
 	@Override
@@ -115,8 +117,11 @@ public class SendFile extends Application{
 		
 		private final UDTSocket socket;
 		
+		private final NumberFormat format=NumberFormat.getNumberInstance();
+		
 		public RequestRunner(UDTSocket socket){
 			this.socket=socket;
+			format.setMaximumFractionDigits(3);
 		}
 		
 		public void run(){
@@ -149,7 +154,8 @@ public class SendFile extends Application{
 					Util.copy(fis, out, size, true);
 					long end=System.currentTimeMillis();
 					System.out.println(socket.getSession().getStatistics().toString());
-					System.out.println("[SendFile] Rate: "+1000*size/1024/1024/(end-start)+" MBytes/sec.");
+					double rate=1000.0*size/1024/1024/(end-start);
+					System.out.println("[SendFile] Rate: "+format.format(rate)+" MBytes/sec. "+format.format(8*rate)+" MBit/sec.");
 					socket.getSession().getStatistics().writeParameterHistory(new File("udtstats-"+System.currentTimeMillis()+".csv"));
 				}finally{
 					fis.close();

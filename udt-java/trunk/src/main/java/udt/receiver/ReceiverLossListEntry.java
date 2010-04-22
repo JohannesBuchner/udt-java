@@ -39,7 +39,7 @@ import udt.util.Util;
  */
 public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> {
 
-	private final long sequenceNumber ;
+	private final long sequenceNumber;
 	private	long lastFeedbacktime;
 	private long k = 2;
 

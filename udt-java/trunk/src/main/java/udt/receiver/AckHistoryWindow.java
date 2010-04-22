@@ -36,8 +36,6 @@ import udt.util.CircularArray;
 
 /**
  * a circular array of each sent Ack and the time it is sent out
- * 
- *
  */
 public class AckHistoryWindow extends CircularArray<AckHistoryEntry>{
 	
@@ -47,20 +45,20 @@ public class AckHistoryWindow extends CircularArray<AckHistoryEntry>{
 	
 	/**
 	 * return  the time for the given seq no, or <code>-1 </code> if not known
-	 * @param seqNo
+	 * @param ackNumber
 	 */
-	public long getTime(long seqNo){
+	public long getTime(long ackNumber){
 		for(AckHistoryEntry obj: circularArray){
-			if(obj.getAckNumber()==seqNo){
+			if(obj.getAckNumber()==ackNumber){
 				return obj.getSentTime();
 			}
 		}
 		return -1;
 	}
 	
-	public AckHistoryEntry getEntry(long seqNo){
+	public AckHistoryEntry getEntry(long ackNumber){
 		for(AckHistoryEntry obj: circularArray){
-			if(obj.getAckNumber()==seqNo){
+			if(obj.getAckNumber()==ackNumber){
 				return obj;
 			}
 		}

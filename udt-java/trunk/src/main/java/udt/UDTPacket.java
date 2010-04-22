@@ -32,7 +32,7 @@
 
 package udt;
 
-public interface UDTPacket {
+public interface UDTPacket extends Comparable<UDTPacket>{
 
 
 	public long getMessageNumber();
@@ -67,4 +67,7 @@ public interface UDTPacket {
 	public boolean isConnectionHandshake();
 	
 	public UDTSession getSession();
+
+	public long getPacketSequenceNumber();
+	
 }
