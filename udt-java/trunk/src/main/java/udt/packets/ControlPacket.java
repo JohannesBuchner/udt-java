@@ -191,6 +191,14 @@ public abstract class ControlPacket implements UDTPacket{
 		this.session = session;
 	}
 	
+	public long getPacketSequenceNumber(){
+		return -1;
+	}
+	
+	public int compareTo(UDTPacket other){
+		return (int)(getPacketSequenceNumber()-other.getPacketSequenceNumber());
+	}
+	
 	public static enum ControlPacketType {
 		
 		CONNECTION_HANDSHAKE,

@@ -21,7 +21,7 @@ public class UDTCongestionControl implements CongestionControl {
 	private final UDTStatistics statistics;
 
 	//round trip time in microseconds
-	private long roundTripTime=2*Util.getSYNTime();
+	private long roundTripTime=0;
 
 	//rate in packets per second
 	private long packetArrivalRate=0;
@@ -124,7 +124,6 @@ public class UDTCongestionControl implements CongestionControl {
 		if(slowStartPhase){
 			congestionWindowSize+=ackSeqno-lastAckSeqNumber;
 			lastAckSeqNumber = ackSeqno;
-
 			//but not beyond a maximum size
 			if(congestionWindowSize>session.getFlowWindowSize()){
 				System.out.println("slow start ends on ACK");
@@ -163,7 +162,6 @@ public class UDTCongestionControl implements CongestionControl {
 		double factor=Util.getSYNTimeD()/(packetSendingPeriod*numOfIncreasingPacket+Util.getSYNTimeD());
 		packetSendingPeriod=factor*packetSendingPeriod;
 		//packetSendingPeriod=0.995*packetSendingPeriod;
-		//System.out.println("dec snd factor "+factor+" to "+packetSendingPeriod);
 
 		statistics.setSendPeriod(packetSendingPeriod);
 	}
@@ -173,7 +171,7 @@ public class UDTCongestionControl implements CongestionControl {
 
 	//see spec page 16
 	private double computeNumOfIncreasingPacket (){
-		//difference in link capacity and sending speed, in packets per second 
+		//difference between link capacity and sending speed, in packets per second 
 		double remaining=estimatedLinkCapacity-1000000.0/packetSendingPeriod;
 
 		if(remaining<=0){

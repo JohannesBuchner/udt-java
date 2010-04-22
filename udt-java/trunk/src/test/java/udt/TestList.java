@@ -1,5 +1,10 @@
 package udt;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
+
 import junit.framework.TestCase;
+import udt.packets.DataPacket;
+import udt.packets.KeepAlive;
 import udt.receiver.AckHistoryEntry;
 import udt.receiver.AckHistoryWindow;
 import udt.receiver.PacketHistoryWindow;
@@ -58,22 +63,14 @@ public class TestList extends TestCase{
 		for(int i=0;i<values.length;i++){
 			p.add(values[i]);
 		}
-		//assertEquals(10.0d, p.computeMedianTimeInterval());
+		assertEquals(4.0d, p.computeMedianTimeInterval());
 		
-		System.out.println(p.toString());
-		System.out.println("MedianTimeInterval: "+p.computeMedianTimeInterval());
-		
-		System.out.println(p.toString());
-		System.out.println("MedianTimeInterval: "+p.computeMedianTimeInterval());
-		
-		//assertEquals(10.0d, p.);
-		
-		//long[] arrivaltimes = {12, 12, 12, 12};
-		//PacketPairWindow p1=new PacketPairWindow(16);
-		//for(int i=0;i<values.length;i++){
-		//	p1.insert(arrivaltimes[i]);
-		//}
-		//assertEquals(12.0d, p1.computeMedianTimeInterval());
+		long[] arrivaltimes = {12, 12, 12, 12};
+		PacketPairWindow p1=new PacketPairWindow(16);
+		for(int i=0;i<values.length;i++){
+			p1.add(arrivaltimes[i]);
+		}
+		assertEquals(12.0d, p1.computeMedianTimeInterval());
 		
 	}
 	
@@ -81,10 +78,8 @@ public class TestList extends TestCase{
 	
 
 	public void testAckHistoryWindow(){
-		AckHistoryEntry ackSeqNrA = new AckHistoryEntry( 0,1,1263465050);
-		
+		AckHistoryEntry ackSeqNrA = new AckHistoryEntry(0,1,1263465050);
 		AckHistoryEntry ackSeqNrB = new AckHistoryEntry(1,2,1263465054);
-		
 		AckHistoryEntry ackSeqNrC = new AckHistoryEntry(2,3,1263465058);
 		
 		AckHistoryWindow recvWindow = new AckHistoryWindow(3);
@@ -92,10 +87,7 @@ public class TestList extends TestCase{
 		recvWindow.add(ackSeqNrB);
 		recvWindow.add(ackSeqNrC);
 		AckHistoryEntry entryA = recvWindow.getEntry(1);
-		long storageTimeA = entryA.getSentTime();
-		long storageTimeA_ =recvWindow.getTime(1);
-		System.out.println("storageTimeA bzw A_ "+storageTimeA+"  "+storageTimeA_);
-		
+		assertEquals(1263465050, entryA.getSentTime());
 	}
 
 	public void testSenderLossList1(){
@@ -110,4 +102,30 @@ public class TestList extends TestCase{
 		assertEquals(C,oldest);
 	}
 
+	public void testReceiverInputQueue(){
+		BlockingQueue<UDTPacket> q=new PriorityBlockingQueue<UDTPacket>(5);
+		UDTPacket control = new KeepAlive();
+		DataPacket d1=new DataPacket();
+		d1.setPacketSequenceNumber(1);
+		DataPacket d2=new DataPacket();
+		d2.setPacketSequenceNumber(2);
+		q.offer(d2);
+		q.offer(d1);
+		q.offer(control);
+		
+		UDTPacket p1=q.poll();
+		assertTrue(p1.isControlPacket());
+		
+		UDTPacket p2=q.poll();
+		assertFalse(p2.isControlPacket());
+		//check ordering by sequence number
+		assertEquals(1,p2.getPacketSequenceNumber());
+		
+		UDTPacket p3=q.poll();
+		assertFalse(p3.isControlPacket());
+		assertEquals(2,p3.getPacketSequenceNumber());
+		
+		
+	}
+	
 }
