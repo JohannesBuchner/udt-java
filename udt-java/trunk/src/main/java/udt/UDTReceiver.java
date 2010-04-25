@@ -125,7 +125,7 @@ public class UDTReceiver {
 
 	private long nextEXP;
 	//microseconds to next EXP event
-	private long EXP_INTERVAL=Util.getSYNTime();
+	private long EXP_INTERVAL=100*Util.getSYNTime();
 
 	//instant when the session was created (for expiry checking)
 	private final long sessionUpSince;
@@ -348,7 +348,7 @@ public class UDTReceiver {
 	public static int dropRate=0;
 	//number of received data packets
 	private int n=0;
-
+	
 	protected void onDataPacketReceived(DataPacket dp)throws IOException{
 		long currentSequenceNumber = dp.getPacketSequenceNumber();
 		//check whether to drop this packet
@@ -367,9 +367,11 @@ public class UDTReceiver {
 			long interval=currentDataPacketArrivalTime -lastDataPacketArrivalTime;
 			packetPairWindow.add(interval);
 		}
+		
 		//(5).record the packet arrival time in the PKT History Window.
 		packetHistoryWindow.add(currentDataPacketArrivalTime);
 
+		
 		//store current time
 		lastDataPacketArrivalTime=currentDataPacketArrivalTime;
 

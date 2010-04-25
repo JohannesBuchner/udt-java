@@ -150,6 +150,10 @@ public class UDTStatistics {
 		this.sendPeriod=sendPeriod;
 	}
 
+	public double getSendPeriod(){
+		return sendPeriod;
+	}
+
 	public void updateReadDataMD5(byte[]data){
 		digest.update(data);
 	}
