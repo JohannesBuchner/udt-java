@@ -21,7 +21,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=200;
+	int num_packets=100;
 	
 	//how large is a single packet
 	int size=1*1024*1024;
@@ -64,7 +64,12 @@ public class TestUDTLargeData extends UDTTestBase{
 				client.sendBlocking(data);
 				digest.update(data);
 				double took=System.currentTimeMillis()-block;
-				System.out.println("Sent block <"+i+"> in "+took+" ms, rate: "+format.format(size/(1024*took))+ " Mbytes/sec");
+				double arrival=client.getStatistics().getPacketArrivalRate();
+				double snd=client.getStatistics().getSendPeriod();
+				System.out.println("Sent block <"+i+"> in "+took+" ms, "
+						+" pktArr: "+arrival
+						+  " snd: "+format.format(snd)
+						+" rate: "+format.format(size/(1024*took))+ " MB/sec");
 			}
 			end=System.currentTimeMillis();
 			client.shutdown();
@@ -74,7 +79,7 @@ public class TestUDTLargeData extends UDTTestBase{
 		while(serverRunning)Thread.sleep(100);
 		
 		System.out.println("Done. Sending "+N/1024/1024+" Mbytes took "+(end-start)+" ms");
-		double mbytes=N/(end-start)/1024;
+		double mbytes=N/(end-start)/1024.0;
 		double mbit=8*mbytes;
 		System.out.println("Rate: "+format.format(mbytes)+" Mbytes/sec "+format.format(mbit)+" Mbit/sec");
 		System.out.println("Server received: "+total);
@@ -117,7 +122,6 @@ public class TestUDTLargeData extends UDTTestBase{
 						else{
 							md5.update(buf, 0, c);
 							total+=c;
-							Thread.yield();
 						}
 					}
 					System.out.println("Server thread exiting, last received bytes: "+c);

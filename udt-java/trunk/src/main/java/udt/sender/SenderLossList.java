@@ -58,7 +58,8 @@ public class SenderLossList {
 	}
 
 	/**
-	 * gets the loss list entry with the lowest sequence number
+	 * retrieves the loss list entry with the lowest sequence number and removes
+	 * it from the loss list
 	 */
 	public SenderLossListEntry getFirstEntry(){
 		return backingList.poll();
@@ -68,4 +69,7 @@ public class SenderLossList {
 		return backingList.isEmpty();
 	}
 
+	public long size(){
+		return backingList.size();
+	}
 }

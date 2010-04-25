@@ -286,14 +286,12 @@ public class UDTSender {
 		SenderLossListEntry entry=senderLossList.getFirstEntry();
 		if (entry!=null) {
 			long seqNumber = entry.getSequenceNumber();
-			
 			//TODO
 			//if the current seqNumber is 16n,check the timeOut in the 
 			//loss list and send a message drop request.
 			//if((seqNumber%16)==0){
 				//sendLossList.checkTimeOut(timeToLive);
 			//}
-			
 			try {
 				//retransmit the packet with the first entry in the list
 				//as sequence number and remove it from  the list
@@ -301,8 +299,7 @@ public class UDTSender {
 				if(pktToRetransmit!=null){
 					endpoint.doSend(pktToRetransmit);
 					statistics.incNumberOfRetransmittedDataPackets();
-				}
-				senderLossList.remove(seqNumber);
+				}		
 			}catch (Exception e) {
 				logger.log(Level.WARNING,"",e);
 			}
@@ -352,6 +349,7 @@ public class UDTSender {
 	 * for processing EXP event (see spec. p 13)
 	 */
 	protected void putUnacknowledgedPacketsIntoLossList(){
+		
 		synchronized (sendLock) {
 			for(Long l: sendBuffer.keySet()){
 				senderLossList.insert(new SenderLossListEntry(l));

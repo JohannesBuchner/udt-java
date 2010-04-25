@@ -34,7 +34,6 @@ package udt;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -66,13 +65,10 @@ public class UDTInputStream extends InputStream {
 	//see the noMoreData() method
 	private final AtomicBoolean expectMoreData=new AtomicBoolean(true);
 
-
-	private final ByteBuffer buffer;
-	
 	private volatile boolean closed=false;
-	
+
 	private volatile boolean blocking=true;
-	
+
 	/**
 	 * create a new {@link UDTInputStream} connected to the given socket
 	 * @param socket - the {@link UDTSocket}
@@ -83,8 +79,6 @@ public class UDTInputStream extends InputStream {
 		this.socket=socket;
 		this.statistics=statistics;
 		appData=new FlowWindow<AppData>(getFlowWindowSize());
-		buffer=ByteBuffer.allocate(65536);
-		buffer.flip();
 	}
 
 	private int getFlowWindowSize(){
@@ -107,7 +101,7 @@ public class UDTInputStream extends InputStream {
 		int b=0;
 		while(b==0)
 			b=read(single);
-		
+
 		if(b>0){
 			return single[0];
 		}
@@ -115,24 +109,39 @@ public class UDTInputStream extends InputStream {
 			return b;
 		}
 	}
-	
+
 	private AppData currentChunk=null;
+	//offset into currentChunk
 	int offset=0;
+
 	@Override
 	public int read(byte[]target)throws IOException{
 		try{
-			//empty the buffer first
-			int read=readFromBuffer(target, 0);
-			//if no more space left in target, exit now
-			if(read==target.length){
-				return target.length;
+			int read=0;
+			updateCurrentChunk();
+			while(currentChunk!=null){
+				byte[]data=currentChunk.data;
+				int length=Math.min(target.length-read,data.length-offset);
+				System.arraycopy(data, offset, target, read, length);
+				read+=length;
+				offset+=length;
+				//check if chunk has been fully read
+				if(offset>=data.length){
+					currentChunk=null;
+					offset=0;
+				}
+
+				//if no more space left in target, exit now
+				if(read==target.length){
+					return read;
+				}
+
+				updateCurrentChunk();
 			}
-			//otherwise try to fill up the buffer
-			fillBuffer();
-			read+=readFromBuffer(target, read);
+
 			if(read>0)return read;
 			if(closed)return -1;
-			if(expectMoreData.get() || buffer.remaining()>0 || !appData.isEmpty())return 0;
+			if(expectMoreData.get() || !appData.isEmpty())return 0;
 			//no more data
 			return -1;
 
@@ -143,20 +152,18 @@ public class UDTInputStream extends InputStream {
 		}
 	}
 
-	@Override
-	public int available()throws IOException{
-		return buffer.remaining();
-	}
-	
 	/**
-	 * write as much data into the ByteBuffer as possible<br/>
+	 * Reads the next valid chunk of application data from the queue<br/>
+	 * 
 	 * In blocking mode,this method will block until data is available or the socket is closed, 
-	 * otherwise wait for at most 10 milliseconds.
-	 * @returns <code>true</code> if data available
+	 * otherwise it will wait for at most 10 milliseconds.
+	 * 
 	 * @throws InterruptedException
 	 */
-	private boolean fillBuffer()throws IOException{
-		if(currentChunk==null){
+	private void updateCurrentChunk()throws IOException{
+		if(currentChunk!=null)return;
+
+		while(true){
 			try{
 				if(blocking){
 					currentChunk=appData.poll(1, TimeUnit.MILLISECONDS);
@@ -170,49 +177,27 @@ public class UDTInputStream extends InputStream {
 				ex.initCause(ie);
 				throw ex;
 			}
+			if(currentChunk!=null){
+				//check if the data is in-order
+				if(currentChunk.sequenceNumber==highestSequenceNumber+1){
+					highestSequenceNumber++;
+					statistics.updateReadDataMD5(currentChunk.data);
+					return;
+				}
+				else if(currentChunk.sequenceNumber<=highestSequenceNumber){
+					//duplicate, drop it
+					currentChunk=null;
+					statistics.incNumberOfDuplicateDataPackets();
+				}
+				else{
+					//out of order data, put back into queue and exit
+					appData.offer(currentChunk);
+					currentChunk=null;
+					return;
+				}
+			}
+			else return;
 		}
-		if(currentChunk!=null){
-			//check if the data is in-order
-			if(currentChunk.sequenceNumber==highestSequenceNumber+1){
-				highestSequenceNumber++;
-				statistics.updateReadDataMD5(currentChunk.data);
-			}
-			else if(currentChunk.sequenceNumber<=highestSequenceNumber){
-				//duplicate, drop it
-				currentChunk=null;
-				statistics.incNumberOfDuplicateDataPackets();
-				return false;
-			}
-			else{
-				//out of order data, put back into queue
-				appData.offer(currentChunk);
-				currentChunk=null;
-				return false;
-			}
-			
-			//fill data into the buffer
-			buffer.compact();
-			int len=Math.min(buffer.remaining(),currentChunk.data.length-offset);
-			buffer.put(currentChunk.data,offset,len);
-			buffer.flip();
-			offset+=len;
-			//check if the chunk has been fully read
-			if(offset>=currentChunk.data.length){
-				currentChunk=null;
-				offset=0;
-			}
-		}
-		return true;
-	}
-
-	//read data from the internal buffer into target at the specified offset
-	private int readFromBuffer(byte[] target, int offset){
-		int available=buffer.remaining();
-		int canRead=Math.min(available, target.length-offset);
-		if(canRead>0){
-			buffer.get(target, offset, canRead);
-		}
-		return canRead;
 	}
 
 	/**
@@ -231,7 +216,7 @@ public class UDTInputStream extends InputStream {
 		closed=true;
 		noMoreData();
 	}
-	
+
 	public UDTSocket getSocket(){
 		return socket;
 	}
@@ -243,7 +228,7 @@ public class UDTInputStream extends InputStream {
 	public void setBlocking(boolean block){
 		this.blocking=block;
 	}
-	
+
 	/**
 	 * notify the input stream that there is no more data
 	 * @throws IOException
@@ -277,7 +262,7 @@ public class UDTInputStream extends InputStream {
 			final int prime = 31;
 			int result = 1;
 			result = prime * result
-					+ (int) (sequenceNumber ^ (sequenceNumber >>> 32));
+			+ (int) (sequenceNumber ^ (sequenceNumber >>> 32));
 			return result;
 		}
 
@@ -294,8 +279,8 @@ public class UDTInputStream extends InputStream {
 				return false;
 			return true;
 		}
-		
-		
+
+
 	}
 
 }
