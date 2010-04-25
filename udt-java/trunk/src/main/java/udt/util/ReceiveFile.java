@@ -88,7 +88,9 @@ public class ReceiveFile extends Application{
 			
 			//read size info (an 4-byte int) 
 			byte[]sizeInfo=new byte[4];
-			in.read(sizeInfo);
+			
+			while(in.read(sizeInfo)==0);
+			
 			long size=ByteBuffer.wrap(sizeInfo).getInt();
 			
 			File file=new File(new String(localFile));
