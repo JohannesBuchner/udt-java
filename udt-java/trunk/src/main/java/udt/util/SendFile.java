@@ -132,8 +132,8 @@ public class SendFile extends Application{
 				byte[]readBuf=new byte[32768];
 				ByteBuffer bb=ByteBuffer.wrap(readBuf);
 
-				//read name file info 
-				in.read(readBuf);
+				//read file name info 
+				while(in.read(readBuf)==0)Thread.sleep(100);
 
 				//how many bytes to read for the file name
 				int length=bb.getInt();

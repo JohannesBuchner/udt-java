@@ -76,11 +76,13 @@ public class ReceiveFile extends Application{
 			
 			byte[]readBuf=new byte[1024];
 			ByteBuffer bb=ByteBuffer.wrap(readBuf);
-			
+			System.out.println("[ReceiveFile] Requesting file "+remoteFile);
 			//send name file info
 			byte[]fName=remoteFile.getBytes();
-			bb.putInt(fName.length);
+			bb.putInt(fName.length+1);
+			
 			bb.put(fName);
+			bb.put((byte)0);
 			
 			out.write(readBuf, 0, bb.position());
 			

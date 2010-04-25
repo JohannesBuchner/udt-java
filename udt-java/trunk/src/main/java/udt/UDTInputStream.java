@@ -118,7 +118,7 @@ public class UDTInputStream extends InputStream {
 	public int read(byte[]target)throws IOException{
 		try{
 			int read=0;
-			updateCurrentChunk();
+			updateCurrentChunk(false);
 			while(currentChunk!=null){
 				byte[]data=currentChunk.data;
 				int length=Math.min(target.length-read,data.length-offset);
@@ -136,7 +136,7 @@ public class UDTInputStream extends InputStream {
 					return read;
 				}
 
-				updateCurrentChunk();
+				updateCurrentChunk(blocking && read==0);
 			}
 
 			if(read>0)return read;
@@ -160,12 +160,12 @@ public class UDTInputStream extends InputStream {
 	 * 
 	 * @throws InterruptedException
 	 */
-	private void updateCurrentChunk()throws IOException{
+	private void updateCurrentChunk(boolean block)throws IOException{
 		if(currentChunk!=null)return;
 
 		while(true){
 			try{
-				if(blocking){
+				if(block){
 					currentChunk=appData.poll(1, TimeUnit.MILLISECONDS);
 					while (!closed && currentChunk==null){
 						currentChunk=appData.poll(1000, TimeUnit.MILLISECONDS);
