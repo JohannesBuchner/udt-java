@@ -126,7 +126,6 @@ public class UDTCongestionControl implements CongestionControl {
 			lastAckSeqNumber = ackSeqno;
 			//but not beyond a maximum size
 			if(congestionWindowSize>session.getFlowWindowSize()){
-				System.out.println("slow start ends on ACK");
 				slowStartPhase=false;
 				if(packetArrivalRate>0){
 					packetSendingPeriod=1000000.0/packetArrivalRate;
