@@ -96,36 +96,46 @@ public class UDTSender {
 	//last acknowledge number, initialised to the initial sequence number
 	private long lastAckSequenceNumber;
 
-	//size of the send queue
-	public final int sendQueueLength;
+	private volatile boolean started=false;
 
 	private volatile boolean stopped=false;
 
-	private volatile AtomicReference<CountDownLatch> waitForAckLatch=new AtomicReference<CountDownLatch>();
+	private final CountDownLatch startLatch=new CountDownLatch(1);
 
-	private volatile AtomicReference<CountDownLatch> waitForSeqAckLatch=new AtomicReference<CountDownLatch>();
+	private final AtomicReference<CountDownLatch> waitForAckLatch=new AtomicReference<CountDownLatch>();
+
+	private final AtomicReference<CountDownLatch> waitForSeqAckLatch=new AtomicReference<CountDownLatch>();
 
 	public UDTSender(UDTSession session,UDPEndPoint endpoint){
 		if(!session.isReady())throw new IllegalStateException("UDTSession is not ready.");
 		this.endpoint= endpoint;
 		this.session=session;
-		
 		statistics=session.getStatistics();
-		sendQueueLength=64;//session.getFlowWindowSize();
 		senderLossList=new SenderLossList();
-		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(sendQueueLength,0.75f,2); 
-		sendQueue = new LinkedBlockingQueue<DataPacket>(sendQueueLength);  
+		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(session.getFlowWindowSize(),0.75f,2); 
+		sendQueue = new LinkedBlockingQueue<DataPacket>(1000);  
 		lastAckSequenceNumber=session.getInitialSequenceNumber();
 		waitForAckLatch.set(new CountDownLatch(1));
 		waitForSeqAckLatch.set(new CountDownLatch(1));
-		start();
+		doStart();
+	}
+
+	/**
+	 * start the sender thread
+	 */
+	public void start(){
+		logger.info("Starting sender for "+session);
+		startLatch.countDown();
+		started=true;
 	}
 
 	//starts the sender algorithm
-	private void start(){
+	private void doStart(){
 		Runnable r=new Runnable(){
 			public void run(){
 				try{
+					//wait until explicitely started
+					startLatch.await();
 					while(!stopped){
 						senderAlgorithm();
 					}
@@ -150,7 +160,7 @@ public class UDTSender {
 	 * @param data
 	 * @throws IOException
 	 * @throws InterruptedException
-	 */ 
+	 */
 	private void send(DataPacket p)throws IOException{
 		synchronized(sendLock){
 			endpoint.doSend(p);
@@ -158,15 +168,6 @@ public class UDTSender {
 			unacknowledged.incrementAndGet();
 		}
 		statistics.incNumberOfSentDataPackets();
-	}
-
-	/**
-	 * writes a data packet into the sendQueue
-	 * @return <code>true</code>if the packet was added, <code>false</code> if the
-	 * packet could not be added because the queue was full
-	 */
-	protected boolean sendUdtPacket(DataPacket p)throws IOException{
-		return sendQueue.offer(p);
 	}
 
 	/**
@@ -183,6 +184,7 @@ public class UDTSender {
 	 * @throws InterruptedException
 	 */
 	protected boolean sendUdtPacket(DataPacket p, int timeout, TimeUnit units)throws IOException,InterruptedException{
+		if(!started)start();
 		return sendQueue.offer(p,timeout,units);
 	}
 
@@ -244,7 +246,7 @@ public class UDTSender {
 	 */
 	protected void onNAKPacketReceived(NegativeAcknowledgement nak){
 		waitForAckLatch.get().countDown();
-
+		
 		for(Integer i: nak.getDecodedLossInfo()){
 			senderLossList.insert(new SenderLossListEntry(i));
 		}
@@ -252,12 +254,12 @@ public class UDTSender {
 		session.getSocket().getReceiver().resetEXPTimer();
 		statistics.incNumberOfNAKReceived();
 		statistics.storeParameters();
-		
+
 		if(logger.isLoggable(Level.FINER)){
 			logger.finer("NAK for "+nak.getDecodedLossInfo().size()+" packets lost, " 
-				+"set send period to "+session.getCongestionControl().getSendInterval());
+					+"set send period to "+session.getCongestionControl().getSendInterval());
 		}
-		
+
 		return;
 	}
 
@@ -282,56 +284,45 @@ public class UDTSender {
 	 */
 	public void senderAlgorithm()throws InterruptedException, IOException{
 		long iterationStart=Util.getCurrentTime();
+		
 		//if the sender's loss list is not empty 
 		SenderLossListEntry entry=senderLossList.getFirstEntry();
 		if (entry!=null) {
-			long seqNumber = entry.getSequenceNumber();
-			//TODO
-			//if the current seqNumber is 16n,check the timeOut in the 
-			//loss list and send a message drop request.
-			//if((seqNumber%16)==0){
-				//sendLossList.checkTimeOut(timeToLive);
-			//}
-			try {
-				//retransmit the packet with the first entry in the list
-				//as sequence number and remove it from  the list
-				DataPacket pktToRetransmit = sendBuffer.get(seqNumber);
-				if(pktToRetransmit!=null){
-					endpoint.doSend(pktToRetransmit);
-					statistics.incNumberOfRetransmittedDataPackets();
-				}		
-			}catch (Exception e) {
-				logger.log(Level.WARNING,"",e);
-			}
-		//	return;
+			handleResubmit(entry);
 		}
-
-		//if the number of unacknowledged data packets does not exceed the congestion 
-		//and the flow window sizes, pack a new packet
-		int unAcknowledged=unacknowledged.get();
 		
-		if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
-				&& unAcknowledged<session.getFlowWindowSize()){
-
-			if(sendQueue.size()==0){
-				//Thread.yield();
+		else
+		{
+			//if the number of unacknowledged data packets does not exceed the congestion 
+			//and the flow window sizes, pack a new packet
+			int unAcknowledged=unacknowledged.get();
+			
+			if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
+					&& unAcknowledged<session.getFlowWindowSize()){
+				//check for application data
+				DataPacket dp=sendQueue.poll();//10*Util.getSYNTime(),TimeUnit.MICROSECONDS);
+				if(dp!=null){
+					send(dp);
+					largestSentSequenceNumber=dp.getPacketSequenceNumber();
+				}
+				else {
+					Thread.yield();
+					return;
+				}
+			}else{
+				//congestion window full, should we *really* wait for an ack?!
+				if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
+					statistics.incNumberOfCCWindowExceededEvents();
+				}
+				Thread.sleep(1);
+				//waitForAck();
 				return;
 			}
-			DataPacket dp=sendQueue.poll(20,TimeUnit.MILLISECONDS);
-			if(dp!=null){
-				send(dp);
-				largestSentSequenceNumber=dp.getPacketSequenceNumber();
-			}
-		}else{
-			//should we *really* wait for an ack?!
-			if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
-				statistics.incNumberOfCCWindowExceededEvents();
-			}
-			Thread.sleep(1);
-			//waitForAck();
 		}
 		
 		//wait
+		
+
 		double snd=session.getCongestionControl().getSendInterval();
 		long passed=Util.getCurrentTime()-iterationStart;
 		int x=0;
@@ -339,17 +330,42 @@ public class UDTSender {
 			if(x++==0)statistics.incNumberOfCCSlowDownEvents();
 			//we cannot wait with microsecond precision
 			if(snd-passed>750)Thread.sleep(1);
-			else Thread.yield();
+			else if((snd-passed)/snd > 0.9){
+				return;
+			}
 			passed=Util.getCurrentTime()-iterationStart;
 		}
-		
+
 	}
 
+	/**
+	 * re-submits an entry from the sender loss list
+	 * @param entry
+	 */
+	protected void handleResubmit(SenderLossListEntry entry){
+		long seqNumber = entry.getSequenceNumber();
+		//TODO
+		//if the current seqNumber is 16n,check the timeOut in the 
+		//loss list and send a message drop request.
+		//if((seqNumber%16)==0){
+		//sendLossList.checkTimeOut(timeToLive);
+		//}
+		try {
+			//retransmit the packet and remove it from  the list
+			DataPacket pktToRetransmit = sendBuffer.get(seqNumber);
+			if(pktToRetransmit!=null){
+				endpoint.doSend(pktToRetransmit);
+				statistics.incNumberOfRetransmittedDataPackets();
+			}		
+		}catch (Exception e) {
+			logger.log(Level.WARNING,"",e);
+		}
+	}
+	
 	/**
 	 * for processing EXP event (see spec. p 13)
 	 */
 	protected void putUnacknowledgedPacketsIntoLossList(){
-		
 		synchronized (sendLock) {
 			for(Long l: sendBuffer.keySet()){
 				senderLossList.insert(new SenderLossListEntry(l));
@@ -391,7 +407,7 @@ public class UDTSender {
 		return largestSentSequenceNumber>=sequenceNumber;
 
 	}
-	
+
 	boolean haveLostPackets(){
 		return !senderLossList.isEmpty();
 	}

@@ -7,13 +7,14 @@ import java.util.Random;
 
 import junit.framework.TestCase;
 import udt.UDPEndPoint;
+import udt.util.MeanValue;
 
 /**
  * send some data over a UDP connection and measure performance
  */
 public class UDPTest extends TestCase {
 
-	final int num_packets=5*1000;
+	final int num_packets=10*1000;
 	final int packetSize=UDPEndPoint.DATAGRAM_SIZE;
 
 	public void test1()throws Exception{
@@ -30,9 +31,12 @@ public class UDPTest extends TestCase {
 		dp.setAddress(InetAddress.getByName("localhost"));
 		dp.setPort(65321);
 		System.out.println("Sending "+num_packets+" data blocks of <"+packetSize+"> bytes");
+		MeanValue v=new MeanValue();
 		for(int i=0;i<num_packets;i++){
 			dp.setData(data);
+			v.begin();
 			s.send(dp);
+			v.end();
 		}
 		System.out.println("Finished sending.");
 		while(serverRunning)Thread.sleep(10);
@@ -41,6 +45,7 @@ public class UDPTest extends TestCase {
 		System.out.println("Done. Sending "+N/1024/1024+" Mbytes took "+(end-start)+" ms");
 		System.out.println("Rate "+N/1000/(end-start)+" Mbytes/sec");
 		System.out.println("Rate "+num_packets+" packets/sec");
+		System.out.println("Mean send time "+v.getFormattedMean()+" microsec");
 		System.out.println("Server received: "+total);
 	}
 

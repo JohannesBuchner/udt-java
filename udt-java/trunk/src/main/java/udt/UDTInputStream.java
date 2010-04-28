@@ -34,10 +34,10 @@ package udt;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import udt.util.FlowWindow;
 import udt.util.UDTStatistics;
 
 /**
@@ -54,7 +54,7 @@ public class UDTInputStream extends InputStream {
 
 	//inbound application data, in-order, and ready for reading
 	//by the application
-	private final FlowWindow<AppData>appData;
+	private final PriorityBlockingQueue<AppData>appData;
 
 	private final UDTStatistics statistics;
 
@@ -78,13 +78,9 @@ public class UDTInputStream extends InputStream {
 	public UDTInputStream(UDTSocket socket, UDTStatistics statistics)throws IOException{
 		this.socket=socket;
 		this.statistics=statistics;
-		appData=new FlowWindow<AppData>(getFlowWindowSize());
+		appData=new PriorityBlockingQueue<AppData>(128);
 	}
 
-	private int getFlowWindowSize(){
-		if(socket!=null)return 2*socket.getSession().getFlowWindowSize();
-		else return 128;
-	}
 	/**
 	 * create a new {@link UDTInputStream} connected to the given socket
 	 * @param socket - the {@link UDTSocket}
@@ -172,6 +168,7 @@ public class UDTInputStream extends InputStream {
 					}
 				}
 				else currentChunk=appData.poll(10, TimeUnit.MILLISECONDS);
+				
 			}catch(InterruptedException ie){
 				IOException ex=new IOException();
 				ex.initCause(ie);

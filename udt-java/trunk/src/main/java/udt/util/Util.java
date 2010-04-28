@@ -121,7 +121,7 @@ public class Util {
 	 * @throws IOException
 	 */
 	public static void copy(InputStream source, OutputStream target, long size, boolean flush)throws IOException{
-		byte[]buf=new byte[1*1024*1024];
+		byte[]buf=new byte[65536];
 		int c;
 		long read=0;
 		while(true){
@@ -149,5 +149,5 @@ public class Util {
 		p.setPort(clientPort);
 		endpoint.sendRaw(p);
 	}
-
+	
 }

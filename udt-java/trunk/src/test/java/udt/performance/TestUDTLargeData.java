@@ -21,7 +21,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=100;
+	int num_packets=50;
 	
 	//how large is a single packet
 	int size=1*1024*1024;
@@ -35,7 +35,6 @@ public class TestUDTLargeData extends UDTTestBase{
 		//System.setProperty(UDTSession.CC_CLASS, NullCongestionControl.class.getName());
 		UDTReceiver.dropRate=0;
 		TIMEOUT=Integer.MAX_VALUE;
-		//UDTReceiver.connectionExpiryDisabled=true;
 		doTest();
 	}
 
@@ -56,12 +55,12 @@ public class TestUDTLargeData extends UDTTestBase{
 		MessageDigest digest=MessageDigest.getInstance("MD5");
 		while(!serverRunning)Thread.sleep(100);
 		long start=System.currentTimeMillis();
-		System.out.println("Sending <"+num_packets+"> packets of <"+size/1024/1024+"> Mbytes each");
+		System.out.println("Sending <"+num_packets+"> packets of <"+format.format(size/1024.0/1024.0)+"> Mbytes each");
 		long end=0;
 		if(serverRunning){
 			for(int i=0;i<num_packets;i++){
 				long block=System.currentTimeMillis();
-				client.sendBlocking(data);
+				client.send(data);
 				digest.update(data);
 				double took=System.currentTimeMillis()-block;
 				double arrival=client.getStatistics().getPacketArrivalRate();
@@ -71,6 +70,7 @@ public class TestUDTLargeData extends UDTTestBase{
 						+  " snd: "+format.format(snd)
 						+" rate: "+format.format(size/(1024*took))+ " MB/sec");
 			}
+			client.flush();
 			end=System.currentTimeMillis();
 			client.shutdown();
 		}else throw new IllegalStateException();

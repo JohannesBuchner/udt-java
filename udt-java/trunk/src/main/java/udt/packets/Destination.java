@@ -33,7 +33,6 @@
 package udt.packets;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 public class Destination {
 
@@ -49,7 +48,7 @@ public class Destination {
 		this.port=port;
 	}
 	
-	public InetAddress getAddress()throws UnknownHostException{
+	public InetAddress getAddress(){
 		return address;
 	}
 	

@@ -13,14 +13,36 @@ public class MeanValue {
 	
 	private final NumberFormat format;
 	
+	private final boolean verbose;
+	
+	private final long nValue; 
+	private long start;
+	
+	private String msg;
 	
 	public MeanValue(){
+		this(false, 64);
+	}
+	
+	public MeanValue(boolean verbose){
+		this(verbose, 64);
+	}
+	
+	public MeanValue(boolean verbose, int nValue){
 		format=NumberFormat.getNumberInstance();
 		format.setMaximumFractionDigits(2);
+		this.verbose=verbose;
+		this.nValue=nValue;
+		begin();
 	}
+	
 	public void addValue(double value){
 		mean=(mean*n+value)/(n+1);
 		n++;
+		if(verbose &&  n % nValue == 1){
+			if(msg!=null)System.out.print(msg+" ");
+			System.out.println(getFormattedMean());
+		}
 	}
 	
 	public double getMean(){
@@ -34,5 +56,17 @@ public class MeanValue {
 	public void clear(){
 		mean=0;
 		n=0;
+	}
+	
+	public void begin(){
+		start=Util.getCurrentTime();
+	}
+	
+	public void end(){
+		addValue(Util.getCurrentTime()-start);
+	}
+	public void end(String msg){
+		this.msg=msg;
+		addValue(Util.getCurrentTime()-start);
 	}
 }
