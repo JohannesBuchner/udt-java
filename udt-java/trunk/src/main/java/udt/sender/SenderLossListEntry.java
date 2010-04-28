@@ -95,6 +95,6 @@ public class SenderLossListEntry implements Comparable<SenderLossListEntry>{
 	}
 
 	public String toString(){
-		return "lossListEntry-"+sequenceNumber;
+		return "lost-"+sequenceNumber;
 	}
 }

@@ -148,7 +148,7 @@ public class UDTSocket {
 	 */
 	protected void doWrite(byte[]data, int offset, int length)throws IOException{
 		try{
-			doWrite(data, offset, length, 5, TimeUnit.MILLISECONDS);
+			doWrite(data, offset, length, Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
 		}catch(InterruptedException ie){
 			IOException io=new IOException();
 			io.initCause(ie);
@@ -163,14 +163,13 @@ public class UDTSocket {
 	 * @param length
 	 * @param timeout
 	 * @param units
-	 * @throws IOException
+	 * @throws IOException - if data cannot be sent
 	 * @throws InterruptedException
 	 */
 	protected void doWrite(byte[]data, int offset, int length, int timeout, TimeUnit units)throws IOException,InterruptedException{
 		int chunksize=session.getDatagramSize()-24;//need some bytes for the header
 		ByteBuffer bb=ByteBuffer.wrap(data,offset,length);
 		long seqNo=0;
-		int i=0;
 		while(bb.remaining()>0){
 			int len=Math.min(bb.remaining(),chunksize);
 			byte[]chunk=new byte[len];
@@ -182,10 +181,9 @@ public class UDTSocket {
 			packet.setDestinationID(session.getDestination().getSocketID());
 			packet.setData(chunk);
 			//put the packet into the send queue
-			while(!sender.sendUdtPacket(packet, timeout, units)){
-				Thread.sleep(1);
+			if(!sender.sendUdtPacket(packet, timeout, units)){
+				throw new IOException("Queue full");
 			}
-			i++;
 		}
 		if(length>0)active=true;
 	}

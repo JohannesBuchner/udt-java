@@ -12,7 +12,6 @@ import udt.receiver.PacketPairWindow;
 import udt.sender.SenderLossList;
 import udt.sender.SenderLossListEntry;
 import udt.util.CircularArray;
-import udt.util.FlowWindow;
 
 /*
  * tests for the various list and queue classes
@@ -33,27 +32,16 @@ public class TestList extends TestCase{
 		c.add(11);
 		System.out.println(c);
 	}
-	
-	public void testFlowWindow(){
-		FlowWindow<Long>f=new FlowWindow<Long>(5);
-		for(int i=0;i<5;i++){
-			System.out.println(i);
-			assertTrue(f.add(Long.valueOf(i)));
-		}
-		assertFalse(f.add(0l));
-		f.setCapacity(6);
-		assertTrue(f.add(0l));
-	}
-	
+
 	public void testPacketHistoryWindow(){
 
 		PacketHistoryWindow packetHistoryWindow = new PacketHistoryWindow(16);
-		
-		for(int i=0;i<17;i++){
-			packetHistoryWindow.add(i*5000l);
+		long offset=1000000;
+		for(int i=0;i<28;i++){
+			packetHistoryWindow.add(offset+i*5000l);
 		}
 		//packets arrive every 5 ms, so packet arrival rate is 200/sec
-		assertEquals(200.0,packetHistoryWindow.getPacketArrivalSpeed());
+		assertEquals(200,packetHistoryWindow.getPacketArrivalSpeed());
 	}
 	
 
@@ -109,6 +97,9 @@ public class TestList extends TestCase{
 		d1.setPacketSequenceNumber(1);
 		DataPacket d2=new DataPacket();
 		d2.setPacketSequenceNumber(2);
+		DataPacket d3=new DataPacket();
+		d3.setPacketSequenceNumber(3);
+		q.offer(d3);
 		q.offer(d2);
 		q.offer(d1);
 		q.offer(control);
@@ -116,14 +107,26 @@ public class TestList extends TestCase{
 		UDTPacket p1=q.poll();
 		assertTrue(p1.isControlPacket());
 		
-		UDTPacket p2=q.poll();
-		assertFalse(p2.isControlPacket());
+		UDTPacket p=q.poll();
+		assertFalse(p.isControlPacket());
 		//check ordering by sequence number
-		assertEquals(1,p2.getPacketSequenceNumber());
+		assertEquals(1,p.getPacketSequenceNumber());
 		
-		UDTPacket p3=q.poll();
-		assertFalse(p3.isControlPacket());
-		assertEquals(2,p3.getPacketSequenceNumber());
+		DataPacket d=new DataPacket();
+		d.setPacketSequenceNumber(54);
+		q.offer(d);
+		
+		p=q.poll();
+		assertFalse(p.isControlPacket());
+		assertEquals(2,p.getPacketSequenceNumber());
+		
+		p=q.poll();
+		assertFalse(p.isControlPacket());
+		assertEquals(3,p.getPacketSequenceNumber());
+
+		p=q.poll();
+		assertFalse(p.isControlPacket());
+		assertEquals(54,p.getPacketSequenceNumber());
 		
 		
 	}

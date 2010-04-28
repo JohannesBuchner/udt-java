@@ -72,4 +72,8 @@ public class SenderLossList {
 	public long size(){
 		return backingList.size();
 	}
+	
+	public String toString(){
+		return backingList.toString();
+	}
 }

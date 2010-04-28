@@ -32,6 +32,7 @@
 
 package udt;
 
+import java.net.DatagramPacket;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
@@ -64,11 +65,14 @@ public abstract class UDTSession {
 	
 	protected final CongestionControl cc;
 	
+	//cache dgPacket (peer stays the same always)
+	private DatagramPacket dgPacket;
+
 	/**
 	 * flow window size, i.e. how many data packets are
 	 * in-flight at a single time
 	 */
-	protected int flowWindowSize=1024;
+	protected int flowWindowSize=64;
 
 	/**
 	 * remote UDT entity (address and socket ID)
@@ -105,7 +109,7 @@ public abstract class UDTSession {
 		statistics=new UDTStatistics(description);
 		mySocketID=nextSocketID.incrementAndGet();
 		this.destination=destination;
-		
+		this.dgPacket=new DatagramPacket(new byte[0],0,destination.getAddress(),destination.getPort());
 		//init configurable CC
 		String clazzP=System.getProperty(CC_CLASS,UDTCongestionControl.class.getName());
 		Object ccObject=null;
@@ -210,4 +214,7 @@ public abstract class UDTSession {
 		this.initialSequenceNumber=initialSequenceNumber;
 	}
 
+	public DatagramPacket getDatagram(){
+		return dgPacket;
+	}
 }

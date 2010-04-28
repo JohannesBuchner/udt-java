@@ -167,9 +167,7 @@ public class UDTReceiver {
 
 		//incoming packets are ordered by sequence number, with control packets having
 		//preference over data packets
-		handoffQueue=//new ArrayBlockingQueue<UDTPacket>(session.getFlowWindowSize());
-				new PriorityBlockingQueue<UDTPacket>(session.getFlowWindowSize());
-		
+		handoffQueue=new PriorityBlockingQueue<UDTPacket>(session.getFlowWindowSize());
 		start();
 	}
 
@@ -198,8 +196,6 @@ public class UDTReceiver {
 	/*
 	 * packets are written by the endpoint
 	 */
-	long i=0;
-	long mean=0;
 	protected void receive(UDTPacket p)throws IOException{
 		handoffQueue.offer(p);
 	}
@@ -247,6 +243,7 @@ public class UDTReceiver {
 			}
 			processUDTPacket(packet);
 		}
+		
 		Thread.yield();
 	}
 
@@ -326,6 +323,7 @@ public class UDTReceiver {
 
 	protected void processUDTPacket(UDTPacket p)throws IOException{
 		//(3).Check the packet type and process it according to this.
+		
 		if(p instanceof DataPacket){
 			DataPacket dp=(DataPacket)p;
 			onDataPacketReceived(dp);
@@ -339,8 +337,6 @@ public class UDTReceiver {
 		else if (p instanceof Shutdown){
 			onShutdown();
 		}
-
-		//other packet types?
 
 	}
 
@@ -375,11 +371,8 @@ public class UDTReceiver {
 		//store current time
 		lastDataPacketArrivalTime=currentDataPacketArrivalTime;
 
-		if(!session.getSocket().getInputStream().haveNewData(currentSequenceNumber,dp.getData())){
-			//no left space in application data buffer->drop this packet
-			return;
-		}
-
+		session.getSocket().getInputStream().haveNewData(currentSequenceNumber,dp.getData());
+		
 		//(6).number of detected lossed packet
 		/*(6.a).if the number of the current data packet is greater than LSRN+1,
 			put all the sequence numbers between (but excluding) these two values
@@ -387,13 +380,11 @@ public class UDTReceiver {
 		if(currentSequenceNumber>largestReceivedSeqNumber+1){
 			sendNAK(currentSequenceNumber);
 		}
-		else{
-			if(currentSequenceNumber<largestReceivedSeqNumber){
+		else if(currentSequenceNumber<largestReceivedSeqNumber){
 				/*(6.b).if the sequence number is less than LRSN,remove it from
 				 * the receiver's loss list
 				 */
 				receiverLossList.remove(currentSequenceNumber);
-			}
 		}
 
 		statistics.incNumberOfReceivedDataPackets();
@@ -422,6 +413,7 @@ public class UDTReceiver {
 			receiverLossList.insert(detectedLossSeqNumber);
 		}
 		endpoint.doSend(nAckPacket);
+		statistics.incNumberOfNAKSent();
 	}
 
 	protected void sendNAK(List<Long>sequenceNumbers)throws IOException{
@@ -447,7 +439,7 @@ public class UDTReceiver {
 		estimateLinkCapacity=packetPairWindow.getEstimatedLinkCapacity();
 		acknowledgmentPkt.setEstimatedLinkCapacity(estimateLinkCapacity);
 		//set the packet arrival rate
-		packetArrivalSpeed=(long)packetHistoryWindow.getPacketArrivalSpeed();
+		packetArrivalSpeed=packetHistoryWindow.getPacketArrivalSpeed();
 		acknowledgmentPkt.setPacketReceiveRate(packetArrivalSpeed);
 
 		endpoint.doSend(acknowledgmentPkt);

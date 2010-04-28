@@ -50,6 +50,7 @@ import java.util.logging.Logger;
 import udt.packets.ConnectionHandshake;
 import udt.packets.Destination;
 import udt.packets.PacketFactory;
+import udt.util.MeanValue;
 import udt.util.UDTThreadFactory;
 
 /**
@@ -82,7 +83,7 @@ public class UDPEndPoint {
 	private volatile boolean stopped=false;
 
 	public static final int DATAGRAM_SIZE=1500;
-
+	
 	/**
 	 * bind to any local port on the given host address
 	 * @param localAddress
@@ -113,6 +114,8 @@ public class UDPEndPoint {
 		sessionHandoff=new SynchronousQueue<UDTSession>();
 		//set a time out to avoid blocking in doReceive()
 		dgSocket.setSoTimeout(1000);
+		//buffer size
+		dgSocket.setReceiveBufferSize(512*1024);
 	}
 
 	/**
@@ -237,6 +240,7 @@ public class UDPEndPoint {
 	 */
 	private long lastDestID=-1;
 	private UDTSession lastSession;
+	MeanValue v=new MeanValue(true,64);
 	protected void doReceive()throws IOException{
 		try{
 			try{
@@ -294,12 +298,11 @@ public class UDPEndPoint {
 			logger.log(Level.WARNING, "Got: "+ex.getMessage(),ex);
 		}
 	}
-
+	
 	protected void doSend(UDTPacket packet)throws IOException{
 		byte[]data=packet.getEncoded();
-		Destination dest=packet.getSession().getDestination();
-		DatagramPacket dgp = new DatagramPacket(data, data.length,
-				dest.getAddress() , dest.getPort());
+		DatagramPacket dgp = packet.getSession().getDatagram();
+		dgp.setData(data);
 		dgSocket.send(dgp);
 	}
 

@@ -29,7 +29,6 @@ public class TestUDTServerSocket extends UDTTestBase{
 	//set an artificial loss rate
 	public void testWithLoss()throws Exception{
 		UDTReceiver.dropRate=3;
-		UDTReceiver.connectionExpiryDisabled=true;
 		TIMEOUT=Integer.MAX_VALUE;
 		num_packets=512;
 		//set log level
@@ -40,7 +39,6 @@ public class TestUDTServerSocket extends UDTTestBase{
 	//send even more data
 	public void testLargeDataSet()throws Exception{
 		UDTReceiver.dropRate=0;
-		UDTReceiver.connectionExpiryDisabled=true;
 		TIMEOUT=Integer.MAX_VALUE;
 		num_packets=3*1024;
 		//set log level

@@ -34,13 +34,8 @@ package udt.receiver;
 
 import udt.util.CircularArray;
 
-
-
 /**
  * A circular array that records the packet arrival times 
- *   
- * 
- * 
  */
 public class PacketHistoryWindow extends CircularArray<Long>{
 
@@ -57,7 +52,7 @@ public class PacketHistoryWindow extends CircularArray<Long>{
 	 * (see specification section 6.2, page 12)
 	 * @return the current value
 	 */
-	public double getPacketArrivalSpeed(){
+	public long getPacketArrivalSpeed(){
 		if(!haveOverflow)return 0;
 		int num=max-1;
 		double AI;
@@ -94,7 +89,7 @@ public class PacketHistoryWindow extends CircularArray<Long>{
 		else{
 			medianPacketArrivalSpeed=0; 
 		}
-		return medianPacketArrivalSpeed;
+		return (long)Math.ceil(medianPacketArrivalSpeed);
 	}
 
 }

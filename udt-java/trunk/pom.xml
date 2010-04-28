@@ -5,7 +5,7 @@
   <artifactId>udt-java</artifactId>
   <packaging>jar</packaging>
   <name>UDT Java implementation</name>
-  <version>0.2-SNAPSHOT</version>
+  <version>0.4-SNAPSHOT</version>
   <url>http://sourceforge.net/projects/udt-java</url>
   <developers>
     <developer>

@@ -17,7 +17,8 @@ public class TestSendFileReceiveFile extends UDTTestBase{
 			Thread.sleep(500);
 		}while(!serverStarted);
 		
-		File f=new File("src/test/java/datafile");
+		//File f=new File("src/test/java/datafile");
+		File f=new File("/tmp/100MB");
 		
 		File tmp=File.createTempFile("udtest-", null);
 		

@@ -108,6 +108,9 @@ public class ReceiveFile extends Application{
 				System.out.println("[ReceiveFile] Rate: "+(int)mbytes+" MBytes/sec. "+(int)mbit+" MBit/sec.");
 			
 				client.shutdown();
+				
+				if(verbose)System.out.println(client.getStatistics());
+				
 			}finally{
 				fos.close();
 			}		

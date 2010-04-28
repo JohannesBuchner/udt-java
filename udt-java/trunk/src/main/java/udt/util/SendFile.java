@@ -151,7 +151,7 @@ public class SendFile extends Application{
 					out.write(PacketUtil.encode(size));
 					long start=System.currentTimeMillis();
 					//and send the file
-					Util.copy(fis, out, size, true);
+					Util.copy(fis, out, size, false);
 					long end=System.currentTimeMillis();
 					System.out.println(socket.getSession().getStatistics().toString());
 					double rate=1000.0*size/1024/1024/(end-start);
