@@ -40,7 +40,7 @@ import udt.UDTSession;
 
 public abstract class ControlPacket implements UDTPacket{
 	
-	protected int contrlPktTyp;
+	protected int controlPacketType;
 
 	//used for ACK and ACK2
 	protected long ackSequenceNumber;
@@ -58,18 +58,11 @@ public abstract class ControlPacket implements UDTPacket{
 	public ControlPacket(){
     	
     }
-    
+
+	public int getControlPacketType(){
+		return controlPacketType;
+	}
 	
-	public int getControlPaketType() {
-		return contrlPktTyp;
-	}
-
-
-	public void setControlPaketType(int packetTyp) {
-		this.contrlPktTyp = packetTyp;
-	}
-
-
 	public long getAckSequenceNumber() {
 		return ackSequenceNumber;
 	}
@@ -112,7 +105,7 @@ public abstract class ControlPacket implements UDTPacket{
 //		//sequence number with highest bit set to "0"
 		try{
 			ByteArrayOutputStream bos=new ByteArrayOutputStream(16);
-			bos.write(PacketUtil.encodeHighesBitTypeAndSeqNumber(true, contrlPktTyp, ackSequenceNumber));
+			bos.write(PacketUtil.encodeHighesBitTypeAndSeqNumber(true, controlPacketType, ackSequenceNumber));
 			bos.write(PacketUtil.encode(messageNumber));
 			bos.write(PacketUtil.encode(timeStamp));
 			bos.write(PacketUtil.encode(destinationID));
@@ -158,7 +151,7 @@ public abstract class ControlPacket implements UDTPacket{
 		ControlPacket other = (ControlPacket) obj;
 		if (ackSequenceNumber != other.ackSequenceNumber)
 			return false;
-		if (contrlPktTyp != other.contrlPktTyp)
+		if (controlPacketType != other.controlPacketType)
 			return false;
 		//if (!Arrays.equals(controlInformation, other.controlInformation))
 		//	return false;

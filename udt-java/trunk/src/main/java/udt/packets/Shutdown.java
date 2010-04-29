@@ -34,10 +34,11 @@
 package udt.packets;
 
 
+
 public class Shutdown extends ControlPacket{
 	
 	public Shutdown(){
-		this.contrlPktTyp=ControlPacketType.SHUTDOWN.ordinal();	
+		this.controlPacketType=ControlPacketType.SHUTDOWN.ordinal();	
 	}
 	
 	@Override

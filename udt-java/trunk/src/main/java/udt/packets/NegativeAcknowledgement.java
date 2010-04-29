@@ -37,6 +37,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import udt.packets.ControlPacket.ControlPacketType;
+
 /**
  * NAK carries information about lost packets
  * 
@@ -51,14 +53,14 @@ public class NegativeAcknowledgement extends ControlPacket{
 	ByteArrayOutputStream lossInfo=new ByteArrayOutputStream();
 
 	public NegativeAcknowledgement(){
-		this.contrlPktTyp=ControlPacketType.NAK.ordinal();
+		this.controlPacketType=ControlPacketType.NAK.ordinal();
 	}
 
 	public NegativeAcknowledgement(byte[]controlInformation){
 		this();
 		lostSequenceNumbers=decode(controlInformation);
 	}
-
+	
 	/**
 	 * decode the loss info
 	 * @param lossInfo

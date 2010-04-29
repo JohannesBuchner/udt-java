@@ -40,7 +40,7 @@ import udt.UDTSender;
 public class Acknowledgment2 extends ControlPacket{
 
 		public Acknowledgment2(){
-			this.contrlPktTyp=ControlPacketType.ACK2.ordinal();	
+			this.controlPacketType=ControlPacketType.ACK2.ordinal();	
 		}
 		
 		public Acknowledgment2(byte[]controlInformation){

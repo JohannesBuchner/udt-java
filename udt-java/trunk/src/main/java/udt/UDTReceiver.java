@@ -53,6 +53,7 @@ import udt.receiver.PacketHistoryWindow;
 import udt.receiver.PacketPairWindow;
 import udt.receiver.ReceiverLossList;
 import udt.receiver.ReceiverLossListEntry;
+import udt.util.MeanValue;
 import udt.util.UDTStatistics;
 import udt.util.UDTThreadFactory;
 import udt.util.Util;
@@ -168,8 +169,25 @@ public class UDTReceiver {
 		//incoming packets are ordered by sequence number, with control packets having
 		//preference over data packets
 		handoffQueue=new PriorityBlockingQueue<UDTPacket>(session.getFlowWindowSize());
+		initMetrics();
 		start();
 	}
+	
+	private MeanValue dgReceiveInterval;
+	private MeanValue dataPacketInterval;
+	private MeanValue processTime;
+	private MeanValue dataProcessTime;
+	private void initMetrics(){
+		dgReceiveInterval=new MeanValue("UDT receive interval");
+		statistics.addMetric(dgReceiveInterval);
+		dataPacketInterval=new MeanValue("Data packet interval");
+		statistics.addMetric(dataPacketInterval);
+		processTime=new MeanValue("UDT packet process time");
+		statistics.addMetric(processTime);
+		dataProcessTime=new MeanValue("Data packet process time");
+		statistics.addMetric(dataProcessTime);
+	}
+
 
 	//starts the sender algorithm
 	private void start(){
@@ -197,7 +215,9 @@ public class UDTReceiver {
 	 * packets are written by the endpoint
 	 */
 	protected void receive(UDTPacket p)throws IOException{
+		dgReceiveInterval.end();
 		handoffQueue.offer(p);
+		dgReceiveInterval.begin();
 	}
 
 	/**
@@ -222,7 +242,6 @@ public class UDTReceiver {
 			nextEXP=currentTime+EXP_INTERVAL;
 			processEXPEvent();
 		}
-
 		//perform time-bounded UDP receive
 		UDTPacket packet=handoffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
 		if(packet!=null){
@@ -233,7 +252,7 @@ public class UDTReceiver {
 			boolean needEXPReset=false;
 			if(packet.isControlPacket()){
 				ControlPacket cp=(ControlPacket)packet;
-				int cpType=cp.getControlPaketType();
+				int cpType=cp.getControlPacketType();
 				if(cpType==ControlPacketType.ACK.ordinal() || cpType==ControlPacketType.NAK.ordinal()){
 					needEXPReset=true;
 				}
@@ -241,7 +260,9 @@ public class UDTReceiver {
 			if(needEXPReset){
 				nextEXP=Util.getCurrentTime()+EXP_INTERVAL;
 			}
+			processTime.begin();
 			processUDTPacket(packet);
+			processTime.end();
 		}
 		
 		Thread.yield();
@@ -324,12 +345,16 @@ public class UDTReceiver {
 	protected void processUDTPacket(UDTPacket p)throws IOException{
 		//(3).Check the packet type and process it according to this.
 		
-		if(p instanceof DataPacket){
+		if(!p.isControlPacket()){
 			DataPacket dp=(DataPacket)p;
+			dataPacketInterval.end();
+			dataProcessTime.begin();
 			onDataPacketReceived(dp);
+			dataProcessTime.end();
+			dataPacketInterval.begin();
 		}
 
-		else if (p instanceof Acknowledgment2){
+		else if (p.getControlPacketType()==ControlPacketType.ACK2.ordinal()){
 			Acknowledgment2 ack2=(Acknowledgment2)p;
 			onAck2PacketReceived(ack2);
 		}

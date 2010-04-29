@@ -41,7 +41,7 @@ public class MessageDropRequest extends ControlPacket{
 	private long msgLastSeqNo;
 	
 	public MessageDropRequest(){
-		this.contrlPktTyp=ControlPacketType.MESSAGE_DROP_REQUEST.ordinal();
+		this.controlPacketType=ControlPacketType.MESSAGE_DROP_REQUEST.ordinal();
 	}
 	
 	public MessageDropRequest(byte[]controlInformation){
@@ -49,6 +49,7 @@ public class MessageDropRequest extends ControlPacket{
 		//this.controlInformation=controlInformation;
 		decode(controlInformation );
 	}
+	
 	void decode(byte[]data){
 		msgFirstSeqNo =PacketUtil.decode(data, 0);
 		msgLastSeqNo =PacketUtil.decode(data, 4);

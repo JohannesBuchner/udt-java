@@ -170,6 +170,10 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 		return false;
 	}
 	
+	public int getControlPacketType(){
+		return -1;
+	}
+	
 	public UDTSession getSession() {
 		return session;
 	}

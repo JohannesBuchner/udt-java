@@ -32,11 +32,10 @@
 
 package udt.packets;
 
-
 public class KeepAlive extends ControlPacket{
 	
 	public KeepAlive(){
-		this.contrlPktTyp=ControlPacketType.KEEP_ALIVE.ordinal();	
+		this.controlPacketType=ControlPacketType.KEEP_ALIVE.ordinal();	
 	}
 	
 	@Override

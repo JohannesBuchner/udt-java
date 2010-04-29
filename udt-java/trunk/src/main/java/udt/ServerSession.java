@@ -43,6 +43,7 @@ import udt.packets.ConnectionHandshake;
 import udt.packets.Destination;
 import udt.packets.KeepAlive;
 import udt.packets.Shutdown;
+import udt.util.MeanValue;
 
 /**
  * server side session in client-server mode
@@ -67,7 +68,6 @@ public class ServerSession extends UDTSession {
 	@Override
 	public void received(UDTPacket packet, Destination peer){
 		lastPacket=packet;
-
 		if (getState()<=ready && packet instanceof ConnectionHandshake) {
 			logger.info("Received ConnectionHandshake from "+peer);
 			ConnectionHandshake connectionHandshake=(ConnectionHandshake)packet;

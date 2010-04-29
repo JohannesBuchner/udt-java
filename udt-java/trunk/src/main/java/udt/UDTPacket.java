@@ -48,6 +48,8 @@ public interface UDTPacket extends Comparable<UDTPacket>{
 	
 	public boolean isControlPacket();
 	
+	public int getControlPacketType();
+	
 	/**
 	 * header
 	 * @return

@@ -33,6 +33,7 @@
 package udt.packets;
 import java.io.ByteArrayOutputStream;
 
+import udt.UDTPacket;
 import udt.UDTReceiver;
 import udt.UDTSender;
 
@@ -57,14 +58,14 @@ public class Acknowledgement extends ControlPacket {
 	private long estimatedLinkCapacity;
 	
 	public Acknowledgement(){
-		this.contrlPktTyp=ControlPacketType.ACK.ordinal();
+		this.controlPacketType=ControlPacketType.ACK.ordinal();
 	}
 	
 	public Acknowledgement(byte[] controlInformation){
 		this();
 		decodeControlInformation(controlInformation);
 	}
-	
+
 	void decodeControlInformation(byte[] data){
 		ackNumber=PacketUtil.decode(data, 0);
 		roundTripTime =PacketUtil.decode(data, 4);

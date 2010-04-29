@@ -52,14 +52,13 @@ public class ConnectionHandshake extends ControlPacket {
 	private long socketID;
 	
 	public ConnectionHandshake(){
-		this.contrlPktTyp=ControlPacketType.CONNECTION_HANDSHAKE.ordinal();
+		this.controlPacketType=ControlPacketType.CONNECTION_HANDSHAKE.ordinal();
 	}
 	
 	public ConnectionHandshake(byte[]controlInformation){
 		this();
 		//this.controlInformation=controlInformation;
-		decode(controlInformation );
-		
+		decode(controlInformation);
 	}
 	
 	//faster than instanceof...

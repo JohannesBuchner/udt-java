@@ -36,6 +36,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.text.NumberFormat;
 
 import udt.UDTClient;
 import udt.UDTInputStream;
@@ -56,12 +57,15 @@ public class ReceiveFile extends Application{
 	private final String serverHost;
 	private final String remoteFile;
 	private final String localFile;
+	private final NumberFormat format;
 	
 	public ReceiveFile(String serverHost, int serverPort, String remoteFile, String localFile){
 		this.serverHost=serverHost;
 		this.serverPort=serverPort;
 		this.remoteFile=remoteFile;
 		this.localFile=localFile;
+		format=NumberFormat.getNumberInstance();
+		format.setMaximumFractionDigits(3);
 	}
 	
 	public void run(){
@@ -102,10 +106,9 @@ public class ReceiveFile extends Application{
 			    //and read the file data
 				Util.copy(in, fos, size, false);
 				long end = System.currentTimeMillis();
-				long mb=size/(1024*1024);
-				double mbytes=1000*mb/(end-start);
-				double mbit=8*mbytes;
-				System.out.println("[ReceiveFile] Rate: "+(int)mbytes+" MBytes/sec. "+(int)mbit+" MBit/sec.");
+				double rate=1000.0*size/1024/1024/(end-start);
+				System.out.println("[ReceiveFile] Rate: "+format.format(rate)+" MBytes/sec. "
+						+format.format(8*rate)+" MBit/sec.");
 			
 				client.shutdown();
 				

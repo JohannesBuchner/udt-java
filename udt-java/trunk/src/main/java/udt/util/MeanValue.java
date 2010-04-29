@@ -20,19 +20,22 @@ public class MeanValue {
 	
 	private String msg;
 	
-	public MeanValue(){
-		this(false, 64);
+	private final String name;
+	
+	public MeanValue(String name){
+		this(name, false, 64);
 	}
 	
-	public MeanValue(boolean verbose){
-		this(verbose, 64);
+	public MeanValue(String name, boolean verbose){
+		this(name, verbose, 64);
 	}
 	
-	public MeanValue(boolean verbose, int nValue){
+	public MeanValue(String name, boolean verbose, int nValue){
 		format=NumberFormat.getNumberInstance();
 		format.setMaximumFractionDigits(2);
 		this.verbose=verbose;
 		this.nValue=nValue;
+		this.name=name;
 		begin();
 	}
 	
@@ -68,5 +71,9 @@ public class MeanValue {
 	public void end(String msg){
 		this.msg=msg;
 		addValue(Util.getCurrentTime()-start);
+	}
+	
+	public String getName(){
+		return name;
 	}
 }
