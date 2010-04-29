@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -50,6 +51,7 @@ public class UDTStatistics {
 	private final AtomicInteger numberOfSentDataPackets=new AtomicInteger(0);
 	private final AtomicInteger numberOfReceivedDataPackets=new AtomicInteger(0);
 	private final AtomicInteger numberOfDuplicateDataPackets=new AtomicInteger(0);
+	private final AtomicInteger numberOfMissingDataEvents=new AtomicInteger(0);
 	private final AtomicInteger numberOfNAKSent=new AtomicInteger(0);
 	private final AtomicInteger numberOfNAKReceived=new AtomicInteger(0);
 	private final AtomicInteger numberOfRetransmittedDataPackets=new AtomicInteger(0);
@@ -65,9 +67,12 @@ public class UDTStatistics {
 	private volatile long packetArrivalRate;
 	private volatile long estimatedLinkCapacity;
 	private volatile double sendPeriod;
+	private volatile long congestionWindowSize;
 
 	private MessageDigest digest;
-
+	
+	private final List<MeanValue>metrics=new ArrayList<MeanValue>();
+		
 	public UDTStatistics(String componentDescription){
 		this.componentDescription=componentDescription;
 		try{
@@ -109,6 +114,9 @@ public class UDTStatistics {
 	}
 	public void incNumberOfDuplicateDataPackets() {
 		numberOfDuplicateDataPackets.incrementAndGet();
+	}
+	public void incNumberOfMissingDataEvents() {
+		numberOfMissingDataEvents.incrementAndGet();
 	}
 	public void incNumberOfNAKSent() {
 		numberOfNAKSent.incrementAndGet();
@@ -154,6 +162,14 @@ public class UDTStatistics {
 		return sendPeriod;
 	}
 
+	public long getCongestionWindowSize() {
+		return congestionWindowSize;
+	}
+
+	public void setCongestionWindowSize(long congestionWindowSize) {
+		this.congestionWindowSize = congestionWindowSize;
+	}
+
 	public void updateReadDataMD5(byte[]data){
 		digest.update(data);
 	}
@@ -166,6 +182,22 @@ public class UDTStatistics {
 		return packetArrivalRate;
 	}
 
+	/**
+	 * add a metric
+	 * @param m - the metric to add
+	 */
+	public void addMetric(MeanValue m){
+		metrics.add(m);
+	}
+	
+	/**
+	 * get a read-only list containing all metrics
+	 * @return
+	 */
+	public List<MeanValue>getMetrics(){
+		return Collections.unmodifiableList(metrics);
+	}
+	
 	public String toString(){
 		StringBuilder sb=new StringBuilder();
 		sb.append("Statistics for ").append(componentDescription).append("\n");
@@ -183,11 +215,19 @@ public class UDTStatistics {
 		if(packetArrivalRate>0){
 			sb.append("Packet rate: ").append(packetArrivalRate).append("/sec., link capacity: ").append(estimatedLinkCapacity).append("/sec.\n");
 		}
+		if(numberOfMissingDataEvents.get()>0){
+			sb.append("Sender without data events: ").append(numberOfMissingDataEvents.get()).append("\n");
+		}
 		if(numberOfCCSlowDownEvents.get()>0){
 			sb.append("CC rate slowdown events: ").append(numberOfCCSlowDownEvents.get()).append("\n");
 		}
 		if(numberOfCCWindowExceededEvents.get()>0){
 			sb.append("CC window slowdown events: ").append(numberOfCCWindowExceededEvents.get()).append("\n");
+		}
+		sb.append("CC parameter SND:  ").append((int)sendPeriod).append("\n");
+		sb.append("CC parameter CWND: ").append(congestionWindowSize).append("\n");
+		for(MeanValue v: metrics){
+			sb.append(v.getName()).append(": ").append(v.getFormattedMean()).append("\n");
 		}
 		return sb.toString();
 	}

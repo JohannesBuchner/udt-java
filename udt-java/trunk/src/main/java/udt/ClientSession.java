@@ -80,6 +80,7 @@ public class ClientSession extends UDTSession {
 		logger.info("Connected, "+n+" handshake packets sent");		
 	}
 
+	
 	@Override
 	public void received(UDTPacket packet, Destination peer) {
 		
@@ -99,6 +100,7 @@ public class ClientSession extends UDTSession {
 			return;
 		}
 		if(getState() == ready) {
+			
 			if(packet instanceof Shutdown){
 				setState(shutdown);
 				active=false;

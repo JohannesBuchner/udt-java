@@ -4,6 +4,8 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.Random;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.SynchronousQueue;
 
 import junit.framework.TestCase;
 import udt.UDPEndPoint;
@@ -19,9 +21,9 @@ public class UDPTest extends TestCase {
 
 	public void test1()throws Exception{
 		runServer();
+		runThirdThread();
 		//client socket
 		DatagramSocket s=new DatagramSocket(12345);
-
 		//generate a test array with random content
 		N=num_packets*packetSize;
 		byte[]data=new byte[packetSize];
@@ -31,12 +33,15 @@ public class UDPTest extends TestCase {
 		dp.setAddress(InetAddress.getByName("localhost"));
 		dp.setPort(65321);
 		System.out.println("Sending "+num_packets+" data blocks of <"+packetSize+"> bytes");
-		MeanValue v=new MeanValue();
+		MeanValue v=new MeanValue("Datagram send time",false);
+		MeanValue v2=new MeanValue("Datagram send interval",false);
 		for(int i=0;i<num_packets;i++){
 			dp.setData(data);
+			v2.end();
 			v.begin();
 			s.send(dp);
 			v.end();
+			v2.begin();
 		}
 		System.out.println("Finished sending.");
 		while(serverRunning)Thread.sleep(10);
@@ -46,6 +51,7 @@ public class UDPTest extends TestCase {
 		System.out.println("Rate "+N/1000/(end-start)+" Mbytes/sec");
 		System.out.println("Rate "+num_packets+" packets/sec");
 		System.out.println("Mean send time "+v.getFormattedMean()+" microsec");
+		System.out.println("Mean send interval "+v2.getFormattedMean()+" microsec");
 		System.out.println("Server received: "+total);
 	}
 
@@ -62,9 +68,30 @@ public class UDPTest extends TestCase {
 				try{
 					byte[]buf=new byte[packetSize];
 					DatagramPacket dp=new DatagramPacket(buf,buf.length);
-					long start=System.currentTimeMillis();
 					while(true){
 						serverSocket.receive(dp);
+						handoff.offer(dp);
+					}
+				}
+				catch(Exception e){
+					e.printStackTrace();
+				}
+				serverRunning=false;
+			}
+		};
+		Thread t=new Thread(serverProcess);
+		t.start();
+	}
+	
+	private final BlockingQueue<DatagramPacket> handoff=new SynchronousQueue<DatagramPacket>();
+	
+	private void runThirdThread()throws Exception{
+		Runnable serverProcess=new Runnable(){
+			public void run(){
+				try{
+					long start=System.currentTimeMillis();
+					while(true){
+						DatagramPacket dp=handoff.poll();
 						total+=dp.getLength();
 						if(total==N)break;
 					}
@@ -80,5 +107,7 @@ public class UDPTest extends TestCase {
 		};
 		Thread t=new Thread(serverProcess);
 		t.start();
+		
 	}
+	
 }

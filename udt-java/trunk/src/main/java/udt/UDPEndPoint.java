@@ -83,7 +83,7 @@ public class UDPEndPoint {
 	private volatile boolean stopped=false;
 
 	public static final int DATAGRAM_SIZE=1500;
-	
+
 	/**
 	 * bind to any local port on the given host address
 	 * @param localAddress
@@ -113,9 +113,9 @@ public class UDPEndPoint {
 		clientSessions=new ConcurrentHashMap<Destination, UDTSession>();
 		sessionHandoff=new SynchronousQueue<UDTSession>();
 		//set a time out to avoid blocking in doReceive()
-		dgSocket.setSoTimeout(1000);
+		dgSocket.setSoTimeout(100000);
 		//buffer size
-		dgSocket.setReceiveBufferSize(512*1024);
+		dgSocket.setReceiveBufferSize(128*1024);
 	}
 
 	/**
@@ -151,9 +151,7 @@ public class UDPEndPoint {
 		Runnable receive=new Runnable(){
 			public void run(){
 				try{
-					while(!stopped){
-						doReceive();
-					}
+					doReceive();
 				}catch(Exception ex){
 					ex.printStackTrace();
 				}
@@ -240,65 +238,68 @@ public class UDPEndPoint {
 	 */
 	private long lastDestID=-1;
 	private UDTSession lastSession;
-	MeanValue v=new MeanValue(true,64);
+	
+	MeanValue v=new MeanValue("",false);
+	
 	protected void doReceive()throws IOException{
-		try{
+		while(!stopped){
 			try{
-				//will block until a packet is received or timeout has expired
-				dgSocket.receive(dp);
-				Destination peer=new Destination(dp.getAddress(), dp.getPort());
-				int l=dp.getLength();
-				UDTPacket packet=PacketFactory.createPacket(dp.getData(),l);
-				lastPacket=packet;
-
-				//handle connection handshake 
-				if(packet.isConnectionHandshake()){
-					UDTSession session=clientSessions.get(peer);
+				try{
+					//will block until a packet is received or timeout has expired
+					dgSocket.receive(dp);
 					
-					if(session==null){
-						session=new ServerSession(dp,this);
-						addSession(session.getSocketID(),session);
-						//TODO need to check peer to avoid duplicate server session
-						if(serverSocketMode){
-							logger.fine("Pooling new request.");
-							sessionHandoff.put(session);
-							logger.fine("Request taken for processing.");
-						}
-					}
-					peer.setSocketID(((ConnectionHandshake)packet).getSocketID());
-					session.received(packet,peer);
-				}
+					Destination peer=new Destination(dp.getAddress(), dp.getPort());
+					int l=dp.getLength();
+					UDTPacket packet=PacketFactory.createPacket(dp.getData(),l);
+					lastPacket=packet;
 
-				else{
-					//dispatch to existing session
-					long dest=packet.getDestinationID();
-					UDTSession session;
-					if(dest==lastDestID){
-						session=lastSession;
-					}
-					else{
-						session=sessions.get(dest);
-						lastSession=session;
-						lastDestID=dest;
-					}
-					if(session==null){
-						logger.warning("Unknown session <"+packet.getDestinationID()+"> requested from <"+peer+"> packet type "+packet.getClass().getName());
-					}
-					else{
+					//handle connection handshake 
+					if(packet.isConnectionHandshake()){
+						UDTSession session=clientSessions.get(peer);
+						if(session==null){
+							session=new ServerSession(dp,this);
+							addSession(session.getSocketID(),session);
+							//TODO need to check peer to avoid duplicate server session
+							if(serverSocketMode){
+								logger.fine("Pooling new request.");
+								sessionHandoff.put(session);
+								logger.fine("Request taken for processing.");
+							}
+						}
+						peer.setSocketID(((ConnectionHandshake)packet).getSocketID());
 						session.received(packet,peer);
 					}
+					else{
+						//dispatch to existing session
+						long dest=packet.getDestinationID();
+						UDTSession session;
+						if(dest==lastDestID){
+							session=lastSession;
+						}
+						else{
+							session=sessions.get(dest);
+							lastSession=session;
+							lastDestID=dest;
+						}
+						if(session==null){
+							logger.warning("Unknown session <"+packet.getDestinationID()+"> requested from <"+peer+"> packet type "+packet.getClass().getName());
+						}
+						else{
+							session.received(packet,peer);
+						}
+					}
+				}catch(SocketException ex){
+					logger.log(Level.INFO, "SocketException: "+ex.getMessage());
+				}catch(SocketTimeoutException ste){
+					//can safely ignore... we will retry until the endpoint is stopped
 				}
-			}catch(SocketException ex){
-				logger.log(Level.INFO, "SocketException: "+ex.getMessage());
-			}catch(SocketTimeoutException ste){
-				//can safely ignore... we will retry until the endpoint is stopped
-			}
 
-		}catch(Exception ex){
-			logger.log(Level.WARNING, "Got: "+ex.getMessage(),ex);
+			}catch(Exception ex){
+				logger.log(Level.WARNING, "Got: "+ex.getMessage(),ex);
+			}
 		}
 	}
-	
+
 	protected void doSend(UDTPacket packet)throws IOException{
 		byte[]data=packet.getEncoded();
 		DatagramPacket dgp = packet.getSession().getDatagram();

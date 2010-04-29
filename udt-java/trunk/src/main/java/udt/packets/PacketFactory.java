@@ -105,7 +105,6 @@ public class PacketFactory {
 		}
 		
 		if(packet!=null){
-			packet.setControlPaketType(pktType);
 			packet.setAckSequenceNumber(ackSeqNo);
 			packet.setMessageNumber(msgNr);
 			packet.setTimeStamp(timeStamp);

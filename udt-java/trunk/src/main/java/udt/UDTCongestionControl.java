@@ -30,7 +30,7 @@ public class UDTCongestionControl implements CongestionControl {
 	private long estimatedLinkCapacity=0;
 
 	// Packet sending period = packet send interval, in microseconds
-	private double packetSendingPeriod=0;              
+	private double packetSendingPeriod=1;              
 
 	// Congestion window size, in packets
 	private long congestionWindowSize=16;
@@ -228,9 +228,6 @@ public class UDTCongestionControl implements CongestionControl {
 			// c. Record the current largest sent sequence number (LastDecSeq).
 			lastDecreaseSeqNo= currentMaxSequenceNumber;
 		}
-		
-		//enforce upper limit on send period...
-		//packetSendingPeriod=Math.min(packetSendingPeriod, 2*roundTripTime);
 		
 		statistics.setSendPeriod(packetSendingPeriod);
 		return;
