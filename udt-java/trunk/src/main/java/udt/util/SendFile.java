@@ -108,7 +108,8 @@ public class SendFile extends Application{
 	}
 
 	public static void usage(){
-		System.out.println("Usage: java -cp ... udt.util.SendFile <server_port>");
+		System.out.println("Usage: java -cp ... udt.util.SendFile <server_port> " +
+				"[--verbose] [--localPort=<port>] [--localIP=<ip>]");
 	}
 
 	public static class RequestRunner implements Runnable{

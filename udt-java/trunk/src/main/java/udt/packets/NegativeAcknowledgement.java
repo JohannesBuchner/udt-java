@@ -37,8 +37,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import udt.packets.ControlPacket.ControlPacketType;
-
 /**
  * NAK carries information about lost packets
  * 

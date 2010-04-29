@@ -20,7 +20,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=20;
+	int num_packets=100;
 	
 	//how large is a single packet
 	int size=1*1024*1024;
@@ -31,7 +31,6 @@ public class TestUDTLargeData extends UDTTestBase{
 
 	public void test1()throws Exception{
 		Logger.getLogger("udt").setLevel(Level.INFO);
-		//System.setProperty(UDTSession.CC_CLASS, NullCongestionControl.class.getName());
 		UDTReceiver.dropRate=0;
 		TIMEOUT=Integer.MAX_VALUE;
 		doTest();

@@ -89,6 +89,10 @@ public class ReceiveFile extends Application{
 			bb.put((byte)0);
 			
 			out.write(readBuf, 0, bb.position());
+			out.flush();
+			
+			//pause the sender to save some CPU time
+			out.pauseOutput();
 			
 			//read size info (an 4-byte int) 
 			byte[]sizeInfo=new byte[4];
@@ -146,7 +150,9 @@ public class ReceiveFile extends Application{
 	}
 	
 	public static void usage(){
-		System.out.println("Usage: java -cp .. udt.util.ReceiveFile <server_ip> <server_port> <remote_filename> <local_filename>");
+		System.out.println("Usage: java -cp .. udt.util.ReceiveFile " +
+				"<server_ip> <server_port> <remote_filename> <local_filename> " +
+				"[--verbose] [--localPort=<port>] [--localIP=<ip>]");
 	}
 	
 }
