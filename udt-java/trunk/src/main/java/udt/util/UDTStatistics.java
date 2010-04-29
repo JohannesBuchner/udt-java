@@ -199,13 +199,15 @@ public class UDTStatistics {
 	 * take a snapshot of relevant parameters for later storing to
 	 * file using {@link #writeParameterHistory(File)}
 	 */
-	public synchronized void storeParameters(){
-		if(first){
-			first=false;
-			statsHistory.add(new StatisticsHistoryEntry(true,0,"time","packetRate","sendPeriod"));
-			initialTime=System.currentTimeMillis();
+	public void storeParameters(){
+		synchronized (statsHistory) {
+			if(first){
+				first=false;
+				statsHistory.add(new StatisticsHistoryEntry(true,0,"time","packetRate","sendPeriod"));
+				initialTime=System.currentTimeMillis();
+			}
+			statsHistory.add(new StatisticsHistoryEntry(false,System.currentTimeMillis()-initialTime,packetArrivalRate,sendPeriod));
 		}
-		statsHistory.add(new StatisticsHistoryEntry(false,System.currentTimeMillis()-initialTime,packetArrivalRate,sendPeriod));
 	}
 
 	/**
@@ -215,9 +217,11 @@ public class UDTStatistics {
 	public void writeParameterHistory(File toFile)throws IOException{
 		FileWriter fos=new FileWriter(toFile);
 		try{
-			for(StatisticsHistoryEntry s: statsHistory){
-				fos.write(s.toString());
-				fos.write('\n');
+			synchronized (statsHistory) {
+				for(StatisticsHistoryEntry s: statsHistory){
+					fos.write(s.toString());
+					fos.write('\n');
+				}
 			}
 		}finally{
 			fos.close();
@@ -234,5 +238,5 @@ public class UDTStatistics {
 		}
 		return hexString.toString();
 	}
-	
+
 }
