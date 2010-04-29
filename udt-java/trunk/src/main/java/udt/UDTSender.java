@@ -50,7 +50,6 @@ import udt.packets.DataPacket;
 import udt.packets.KeepAlive;
 import udt.packets.NegativeAcknowledgement;
 import udt.sender.SenderLossList;
-import udt.sender.SenderLossListEntry;
 import udt.util.MeanValue;
 import udt.util.UDTStatistics;
 import udt.util.UDTThreadFactory;
@@ -72,13 +71,16 @@ public class UDTSender {
 
 	private final UDTStatistics statistics;
 
-	//sendLossList store the sequence numbers of lost packets
-	//feed back by the receiver through NAK pakets
+	//senderLossList stores the sequence numbers of lost packets
+	//fed back by the receiver through NAK pakets
 	private final SenderLossList senderLossList;
+	
 	//sendBuffer stores the sent data packets and their sequence numbers
 	private final Map<Long,DataPacket>sendBuffer;
+	
 	//sendQueue contains the packets to send
 	private final BlockingQueue<DataPacket>sendQueue;
+	
 	//thread reading packets from send queue and sending them
 	private Thread senderThread;
 
@@ -101,10 +103,15 @@ public class UDTSender {
 
 	private volatile boolean stopped=false;
 
-	private final CountDownLatch startLatch=new CountDownLatch(1);
+	private volatile boolean paused=false;
 
+	//used to signal that the sender should start to send
+	private volatile CountDownLatch startLatch=new CountDownLatch(1);
+
+	//used by the sender to wait for an ACK
 	private final AtomicReference<CountDownLatch> waitForAckLatch=new AtomicReference<CountDownLatch>();
 
+	//used by the sender to wait for an ACK of a certain sequence number
 	private final AtomicReference<CountDownLatch> waitForSeqAckLatch=new AtomicReference<CountDownLatch>();
 
 	public UDTSender(UDTSession session,UDPEndPoint endpoint){
@@ -145,9 +152,12 @@ public class UDTSender {
 		Runnable r=new Runnable(){
 			public void run(){
 				try{
-					//wait until explicitely started
-					startLatch.await();
-					senderAlgorithm();
+					while(!stopped){
+						//wait until explicitely (re)started
+						startLatch.await();
+						paused=false;
+						senderAlgorithm();
+					}
 				}catch(InterruptedException ie){
 					ie.printStackTrace();
 				}
@@ -262,7 +272,7 @@ public class UDTSender {
 		waitForAckLatch.get().countDown();
 
 		for(Integer i: nak.getDecodedLossInfo()){
-			senderLossList.insert(new SenderLossListEntry(i));
+			senderLossList.insert(Long.valueOf(i));
 		}
 		session.getCongestionControl().onNAK(nak.getDecodedLossInfo());
 		session.getSocket().getReceiver().resetEXPTimer();
@@ -296,18 +306,18 @@ public class UDTSender {
 	/**
 	 * sender algorithm
 	 */
-	MeanValue v=new MeanValue("",true);
+	MeanValue v=new MeanValue("",true,128);
 	public void senderAlgorithm()throws InterruptedException, IOException{
-		while(!stopped){
+		while(!paused){
 
 			long iterationStart=Util.getCurrentTime(); //last packet send time?
 
 			//if the sender's loss list is not empty 
-			SenderLossListEntry entry=senderLossList.getFirstEntry();
-			if (entry!=null) {
+			if (!senderLossList.isEmpty()) {
 				v.begin();
-				handleResubmit(entry);
+				Long entry=senderLossList.getFirstEntry();
 				v.end();
+				handleResubmit(entry);
 			}
 
 			else
@@ -338,7 +348,7 @@ public class UDTSender {
 
 			//wait
 			if(largestSentSequenceNumber % 16 !=0){
-				double snd=100;//session.getCongestionControl().getSendInterval();
+				double snd=session.getCongestionControl().getSendInterval();
 				long passed=Util.getCurrentTime()-iterationStart;
 				int x=0;
 				while(snd-passed>0){
@@ -357,8 +367,8 @@ public class UDTSender {
 	 * re-submits an entry from the sender loss list
 	 * @param entry
 	 */
-	protected void handleResubmit(SenderLossListEntry entry){
-		long seqNumber = entry.getSequenceNumber();
+	protected void handleResubmit(Long seqNumber){
+		//long seqNumber=entry.getSequenceNumber();
 		//TODO
 		//if the current seqNumber is 16n,check the timeOut in the 
 		//loss list and send a message drop request.
@@ -383,7 +393,7 @@ public class UDTSender {
 	protected void putUnacknowledgedPacketsIntoLossList(){
 		synchronized (sendLock) {
 			for(Long l: sendBuffer.keySet()){
-				senderLossList.insert(new SenderLossListEntry(l));
+				senderLossList.insert(l);
 			}
 		}
 	}
@@ -432,7 +442,7 @@ public class UDTSender {
 	 * 
 	 * @throws InterruptedException
 	 */
-	public synchronized void waitForAck(long sequenceNumber)throws InterruptedException{
+	public void waitForAck(long sequenceNumber)throws InterruptedException{
 		while(!session.isShutdown() && !haveAcknowledgementFor(sequenceNumber)){
 			waitForSeqAckLatch.set(new CountDownLatch(1));
 			waitForSeqAckLatch.get().await(10, TimeUnit.MILLISECONDS);
@@ -443,7 +453,7 @@ public class UDTSender {
 	 * wait for the next acknowledge
 	 * @throws InterruptedException
 	 */
-	public synchronized void waitForAck()throws InterruptedException{
+	public void waitForAck()throws InterruptedException{
 		waitForAckLatch.set(new CountDownLatch(1));
 		waitForAckLatch.get().await(1000, TimeUnit.MILLISECONDS);
 	}
@@ -451,5 +461,10 @@ public class UDTSender {
 
 	public void stop(){
 		stopped=true;
+	}
+	
+	public void pause(){
+		startLatch=new CountDownLatch(1);
+		paused=true;
 	}
 }

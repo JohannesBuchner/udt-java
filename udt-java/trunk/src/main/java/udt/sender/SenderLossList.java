@@ -31,37 +31,47 @@
  *********************************************************************************/
 
 package udt.sender;
-import java.util.concurrent.PriorityBlockingQueue;
+import java.util.LinkedList;
 
 /**
  * stores the sequence number of the lost packets in increasing order
  */
 public class SenderLossList {
 
-	private final PriorityBlockingQueue<SenderLossListEntry>backingList;
+	private final LinkedList<Long>backingList;
 	
 	/**
 	 * create a new sender lost list
 	 */
 	public SenderLossList(){
-		backingList = new PriorityBlockingQueue<SenderLossListEntry>(32);
+		backingList = new LinkedList<Long>();
 	}
 
-	public void insert(SenderLossListEntry obj){
+	public void insert(Long obj){
 		synchronized (backingList) {
-			if(!backingList.contains(obj))backingList.add(obj);	
+			if(!backingList.contains(obj)){
+				if(backingList.isEmpty())backingList.add(obj);
+				else{
+					for(int i=0;i<backingList.size();i++){
+						if(obj<backingList.getFirst()){
+							backingList.add(i,obj);	
+						}
+					}
+				}
+			}
 		}
 	}
 
 	public void remove(long seqNo){
-		backingList.remove(new SenderLossListEntry(seqNo));
+		synchronized (backingList) {
+			backingList.remove(seqNo);	
+		}
 	}
 
 	/**
-	 * retrieves the loss list entry with the lowest sequence number and removes
-	 * it from the loss list
+	 * retrieves the loss list entry with the lowest sequence number
 	 */
-	public SenderLossListEntry getFirstEntry(){
+	public Long getFirstEntry(){
 		return backingList.poll();
 	}
 
@@ -69,10 +79,6 @@ public class SenderLossList {
 		return backingList.isEmpty();
 	}
 
-	public long size(){
-		return backingList.size();
-	}
-	
 	public String toString(){
 		return backingList.toString();
 	}

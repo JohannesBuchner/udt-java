@@ -43,7 +43,6 @@ import udt.packets.ConnectionHandshake;
 import udt.packets.Destination;
 import udt.packets.KeepAlive;
 import udt.packets.Shutdown;
-import udt.util.MeanValue;
 
 /**
  * server side session in client-server mode

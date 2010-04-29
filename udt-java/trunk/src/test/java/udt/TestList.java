@@ -10,7 +10,6 @@ import udt.receiver.AckHistoryWindow;
 import udt.receiver.PacketHistoryWindow;
 import udt.receiver.PacketPairWindow;
 import udt.sender.SenderLossList;
-import udt.sender.SenderLossListEntry;
 import udt.util.CircularArray;
 
 /*
@@ -79,14 +78,14 @@ public class TestList extends TestCase{
 	}
 
 	public void testSenderLossList1(){
-		SenderLossListEntry A = new SenderLossListEntry(7);
-		SenderLossListEntry B = new SenderLossListEntry(8);
-		SenderLossListEntry C = new SenderLossListEntry(1);
+		Long A=7l;
+		Long B=8l;
+		Long C=1l;
 		SenderLossList l=new SenderLossList();
 		l.insert(A);
 		l.insert(B);
 		l.insert(C);
-		SenderLossListEntry oldest=l.getFirstEntry();
+		Long oldest=l.getFirstEntry();
 		assertEquals(C,oldest);
 	}
 
@@ -127,7 +126,6 @@ public class TestList extends TestCase{
 		p=q.poll();
 		assertFalse(p.isControlPacket());
 		assertEquals(54,p.getPacketSequenceNumber());
-		
 		
 	}
 	

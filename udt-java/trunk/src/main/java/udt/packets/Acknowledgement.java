@@ -33,7 +33,6 @@
 package udt.packets;
 import java.io.ByteArrayOutputStream;
 
-import udt.UDTPacket;
 import udt.UDTReceiver;
 import udt.UDTSender;
 
