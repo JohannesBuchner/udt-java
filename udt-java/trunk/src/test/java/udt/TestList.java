@@ -85,6 +85,7 @@ public class TestList extends TestCase{
 		l.insert(A);
 		l.insert(B);
 		l.insert(C);
+		assertEquals(3,l.size());
 		Long oldest=l.getFirstEntry();
 		assertEquals(C,oldest);
 	}
