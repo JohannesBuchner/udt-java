@@ -78,7 +78,8 @@ public class UDTInputStream extends InputStream {
 	public UDTInputStream(UDTSocket socket, UDTStatistics statistics)throws IOException{
 		this.socket=socket;
 		this.statistics=statistics;
-		appData=new PriorityBlockingQueue<AppData>(socket.getSession().getFlowWindowSize());
+		int capacity=socket!=null? 4*socket.getSession().getFlowWindowSize() : 64 ;
+		appData=new PriorityBlockingQueue<AppData>(capacity);
 	}
 
 	/**
@@ -178,7 +179,6 @@ public class UDTInputStream extends InputStream {
 				//check if the data is in-order
 				if(currentChunk.sequenceNumber==highestSequenceNumber+1){
 					highestSequenceNumber++;
-					//statistics.updateReadDataMD5(currentChunk.data);
 					return;
 				}
 				else if(currentChunk.sequenceNumber<=highestSequenceNumber){

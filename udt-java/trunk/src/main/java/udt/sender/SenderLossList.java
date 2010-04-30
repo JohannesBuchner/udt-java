@@ -48,6 +48,7 @@ public class SenderLossList {
 	}
 
 	public void insert(Long obj){
+		if(obj==null)System.out.println("!!!");
 		synchronized (backingList) {
 			if(!backingList.contains(obj)){
 				if(backingList.isEmpty())backingList.add(obj);
@@ -62,17 +63,13 @@ public class SenderLossList {
 		}
 	}
 
-	public void remove(long seqNo){
-		synchronized (backingList) {
-			backingList.remove(seqNo);	
-		}
-	}
-
 	/**
 	 * retrieves the loss list entry with the lowest sequence number
 	 */
 	public Long getFirstEntry(){
-		return backingList.poll();
+		synchronized(backingList){
+			return backingList.poll();
+		}
 	}
 
 	public boolean isEmpty(){

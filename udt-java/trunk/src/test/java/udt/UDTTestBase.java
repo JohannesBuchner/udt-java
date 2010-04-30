@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.Random;
 
-import udt.util.UDTStatistics;
+import udt.util.Util;
 
 import junit.framework.TestCase;
 
@@ -60,7 +60,7 @@ public abstract class UDTTestBase extends TestCase{
 	}
 
 	public static String hexString(MessageDigest digest){
-		return UDTStatistics.hexString(digest);
+		return Util.hexString(digest);
 	}
 
 	

@@ -33,8 +33,8 @@
 package udt;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -118,15 +118,15 @@ public class UDTReceiver {
 	//to check the ACK, NAK, or EXP timer
 	private long nextACK;
 	//microseconds to next ACK event
-	private long ACK_INTERVAL=Util.getSYNTime();
+	private long ackTimerInterval=Util.getSYNTime();
 
 	private long nextNAK;
 	//microseconds to next NAK event
-	private long NAK_INTERVAL=Util.getSYNTime();
+	private long nakTimerInterval=Util.getSYNTime();
 
 	private long nextEXP;
 	//microseconds to next EXP event
-	private long EXP_INTERVAL=100*Util.getSYNTime();
+	private long expTimerInterval=100*Util.getSYNTime();
 
 	//instant when the session was created (for expiry checking)
 	private final long sessionUpSince;
@@ -142,6 +142,9 @@ public class UDTReceiver {
 	private Thread receiverThread;
 
 	private volatile boolean stopped=false;
+
+	//(optional) ack interval (see CongestionControl interface)
+	private volatile long ackInterval=-1;
 
 	/**
 	 * if set to true connections will not expire, but will only be
@@ -165,10 +168,7 @@ public class UDTReceiver {
 		packetPairWindow = new PacketPairWindow(16);
 		largestReceivedSeqNumber=session.getInitialSequenceNumber()-1;
 		bufferSize=session.getReceiveBufferSize();
-
-		//incoming packets are ordered by sequence number, with control packets having
-		//preference over data packets
-		handoffQueue=new PriorityBlockingQueue<UDTPacket>(session.getFlowWindowSize());
+		handoffQueue=new ArrayBlockingQueue<UDTPacket>(4*session.getFlowWindowSize());
 		initMetrics();
 		start();
 	}
@@ -194,9 +194,10 @@ public class UDTReceiver {
 		Runnable r=new Runnable(){
 			public void run(){
 				try{
-					nextACK=Util.getCurrentTime()+ACK_INTERVAL;
-					nextNAK=(long)(Util.getCurrentTime()+1.5*NAK_INTERVAL);
-					nextEXP=Util.getCurrentTime()+2*EXP_INTERVAL;
+					nextACK=Util.getCurrentTime()+ackTimerInterval;
+					nextNAK=(long)(Util.getCurrentTime()+1.5*nakTimerInterval);
+					nextEXP=Util.getCurrentTime()+2*expTimerInterval;
+					ackInterval=session.getCongestionControl().getAckInterval();
 					while(!stopped){
 						receiverAlgorithm();
 					}
@@ -228,18 +229,18 @@ public class UDTReceiver {
 		//check ACK timer
 		long currentTime=Util.getCurrentTime();
 		if(nextACK<currentTime){
-			nextACK=currentTime+ACK_INTERVAL;
+			nextACK=currentTime+ackTimerInterval;
 			processACKEvent(true);
 		}
 		//check NAK timer
 		if(nextNAK<currentTime){
-			nextNAK=currentTime+NAK_INTERVAL;
+			nextNAK=currentTime+nakTimerInterval;
 			processNAKEvent();
 		}
 
 		//check EXP timer
 		if(nextEXP<currentTime){
-			nextEXP=currentTime+EXP_INTERVAL;
+			nextEXP=currentTime+expTimerInterval;
 			processEXPEvent();
 		}
 		//perform time-bounded UDP receive
@@ -258,7 +259,7 @@ public class UDTReceiver {
 				}
 			}
 			if(needEXPReset){
-				nextEXP=Util.getCurrentTime()+EXP_INTERVAL;
+				nextEXP=Util.getCurrentTime()+expTimerInterval;
 			}
 			processTime.begin();
 			processUDTPacket(packet);
@@ -367,11 +368,13 @@ public class UDTReceiver {
 
 	//every nth packet will be discarded... for testing only of course
 	public static int dropRate=0;
+	
 	//number of received data packets
 	private int n=0;
 	
 	protected void onDataPacketReceived(DataPacket dp)throws IOException{
 		long currentSequenceNumber = dp.getPacketSequenceNumber();
+		
 		//check whether to drop this packet
 		n++;
 		if(dropRate>0 && n % dropRate == 0){
@@ -379,6 +382,7 @@ public class UDTReceiver {
 			return;
 		}
 
+		
 		long currentDataPacketArrivalTime = Util.getCurrentTime();
 
 		/*(4).if the seqNo of the current data packet is 16n+1,record the
@@ -418,6 +422,11 @@ public class UDTReceiver {
 		if(currentSequenceNumber>largestReceivedSeqNumber){
 			largestReceivedSeqNumber=currentSequenceNumber;
 		}
+
+		//(8) need to send an ACK? Some cc algorithms use this
+		if(ackInterval>0){
+			if(n % ackInterval == 0)processACKEvent(false);
+		}
 	}
 
 	/**
@@ -438,6 +447,7 @@ public class UDTReceiver {
 			receiverLossList.insert(detectedLossSeqNumber);
 		}
 		endpoint.doSend(nAckPacket);
+		//logger.info("NAK for "+currentSequenceNumber);
 		statistics.incNumberOfNAKSent();
 	}
 
@@ -513,8 +523,8 @@ public class UDTReceiver {
 			if(roundTripTime>0)roundTripTime = (roundTripTime*7 + rtt)/8;
 			else roundTripTime = rtt;
 			roundTripTimeVar = (roundTripTimeVar* 3 + Math.abs(roundTripTimeVar- rtt)) / 4;
-			ACK_INTERVAL=4*roundTripTime+roundTripTimeVar+Util.getSYNTime();
-			NAK_INTERVAL=ACK_INTERVAL;
+			ackTimerInterval=4*roundTripTime+roundTripTimeVar+Util.getSYNTime();
+			nakTimerInterval=ackTimerInterval;
 			statistics.setRTT(roundTripTime, roundTripTimeVar);
 		}
 	}
@@ -536,12 +546,16 @@ public class UDTReceiver {
 	private volatile long ackSequenceNumber=0;
 
 	protected void resetEXPTimer(){
-		nextEXP=Util.getCurrentTime()+EXP_INTERVAL;
+		nextEXP=Util.getCurrentTime()+expTimerInterval;
 		expCount=0;
 	}
 
 	protected void resetEXPCount(){
 		expCount=0;
+	}
+	
+	public void setAckInterval(long ackInterval){
+		this.ackInterval=ackInterval;
 	}
 	
 	protected void onShutdown()throws IOException{

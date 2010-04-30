@@ -42,7 +42,7 @@ public class MeanValue {
 	public void addValue(double value){
 		mean=(mean*n+value)/(n+1);
 		n++;
-		if(verbose &&  n % nValue == 1){
+		if(verbose &&  n % nValue == 0){
 			if(msg!=null)System.out.print(msg+" ");
 			System.out.println(getFormattedMean());
 		}

@@ -246,7 +246,7 @@ public class UDTSender {
 
 		long ackNumber=acknowledgement.getAckNumber();
 		cc.onACK(ackNumber);
-		statistics.setCongestionWindowSize(cc.getCongestionWindowSize());
+		statistics.setCongestionWindowSize((long)cc.getCongestionWindowSize());
 		//need to remove all sequence numbers up the ack number from the sendBuffer
 		boolean removed=false;
 		for(long s=lastAckSequenceNumber;s<ackNumber;s++){
@@ -274,7 +274,7 @@ public class UDTSender {
 		for(Integer i: nak.getDecodedLossInfo()){
 			senderLossList.insert(Long.valueOf(i));
 		}
-		session.getCongestionControl().onNAK(nak.getDecodedLossInfo());
+		session.getCongestionControl().onLoss(nak.getDecodedLossInfo());
 		session.getSocket().getReceiver().resetEXPTimer();
 		statistics.incNumberOfNAKReceived();
 		statistics.storeParameters();
@@ -306,17 +306,16 @@ public class UDTSender {
 	/**
 	 * sender algorithm
 	 */
-	MeanValue v=new MeanValue("",true,128);
+	MeanValue v=new MeanValue("Wait for Ack time: ");
 	public void senderAlgorithm()throws InterruptedException, IOException{
+		statistics.addMetric(v);
 		while(!paused){
 
 			long iterationStart=Util.getCurrentTime(); //last packet send time?
 
 			//if the sender's loss list is not empty 
 			if (!senderLossList.isEmpty()) {
-				v.begin();
 				Long entry=senderLossList.getFirstEntry();
-				v.end();
 				handleResubmit(entry);
 			}
 
@@ -327,7 +326,7 @@ public class UDTSender {
 				int unAcknowledged=unacknowledged.get();
 
 				if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
-						&& unAcknowledged<session.getFlowWindowSize()){
+						 && unAcknowledged<session.getFlowWindowSize()){
 					//check for application data
 					DataPacket dp=sendQueue.poll();
 					if(dp!=null){
@@ -342,7 +341,9 @@ public class UDTSender {
 					if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
 						statistics.incNumberOfCCWindowExceededEvents();
 					}
+					v.begin();
 					waitForAck();
+					v.end();
 				}
 			}
 
@@ -455,7 +456,7 @@ public class UDTSender {
 	 */
 	public void waitForAck()throws InterruptedException{
 		waitForAckLatch.set(new CountDownLatch(1));
-		waitForAckLatch.get().await(1000, TimeUnit.MILLISECONDS);
+		waitForAckLatch.get().await(2, TimeUnit.MILLISECONDS);
 	}
 
 

@@ -14,6 +14,7 @@ import udt.UDTReceiver;
 import udt.UDTServerSocket;
 import udt.UDTSocket;
 import udt.UDTTestBase;
+import udt.util.Util;
 
 public class TestUDTLargeData extends UDTTestBase{
 	
@@ -87,7 +88,7 @@ public class TestUDTLargeData extends UDTTestBase{
 		System.out.println("MD5 hash of data received: "+md5_received);
 		System.out.println(client.getStatistics());
 		
-		//assertEquals(md5_sent,md5_received);
+		assertEquals(md5_sent,md5_received);
 		
 		//store stat history to csv file
 		client.getStatistics().writeParameterHistory(File.createTempFile("/udtstats-",".csv"));
@@ -106,6 +107,7 @@ public class TestUDTLargeData extends UDTTestBase{
 		Runnable serverProcess=new Runnable(){
 			public void run(){
 				try{
+					MessageDigest md5=MessageDigest.getInstance("MD5");
 					long start=System.currentTimeMillis();
 					UDTSocket s=serverSocket.accept();
 					assertNotNull(s);
@@ -117,12 +119,13 @@ public class TestUDTLargeData extends UDTTestBase{
 						c=is.read(buf);
 						if(c<0)break;
 						else{
+							md5.update(buf,0,c);
 							total+=c;
 						}
 					}
 					System.out.println("Server thread exiting, last received bytes: "+c);
 					serverRunning=false;
-					md5_received=s.getSession().getStatistics().getDigest();
+					md5_received=Util.hexString(md5);
 					serverSocket.shutDown();
 					System.out.println(s.getSession().getStatistics());
 				}

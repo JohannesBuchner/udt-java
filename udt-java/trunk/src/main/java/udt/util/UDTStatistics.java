@@ -35,8 +35,6 @@ package udt.util;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -69,17 +67,10 @@ public class UDTStatistics {
 	private volatile double sendPeriod;
 	private volatile long congestionWindowSize;
 
-	private MessageDigest digest;
-	
 	private final List<MeanValue>metrics=new ArrayList<MeanValue>();
 		
 	public UDTStatistics(String componentDescription){
 		this.componentDescription=componentDescription;
-		try{
-			digest=MessageDigest.getInstance("MD5");
-		}catch(NoSuchAlgorithmException na){
-			digest=null;
-		}
 	}
 
 	public int getNumberOfSentDataPackets() {
@@ -170,14 +161,6 @@ public class UDTStatistics {
 		this.congestionWindowSize = congestionWindowSize;
 	}
 
-	public void updateReadDataMD5(byte[]data){
-		digest.update(data);
-	}
-
-	public String getDigest(){
-		return hexString(digest);
-	}
-
 	public long getPacketArrivalRate(){
 		return packetArrivalRate;
 	}
@@ -266,17 +249,6 @@ public class UDTStatistics {
 		}finally{
 			fos.close();
 		}
-	}
-
-	public static String hexString(MessageDigest digest){
-		byte[] messageDigest = digest.digest();
-		StringBuilder hexString = new StringBuilder();
-		for (int i=0;i<messageDigest.length;i++) {
-			String hex = Integer.toHexString(0xFF & messageDigest[i]); 
-			if(hex.length()==1)hexString.append('0');
-			hexString.append(hex);
-		}
-		return hexString.toString();
 	}
 
 }

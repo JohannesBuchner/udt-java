@@ -69,17 +69,15 @@ public class ClientSession extends UDTSession {
 	
 	public void connect() throws InterruptedException,IOException{
 		int n=0;
-		
 		sendHandShake();
-		
 		while(getState()!=ready){
 			if(getState()==invalid)throw new IOException("Can't connect!");
 			n++;
 			if(getState()!=ready)Thread.sleep(500);
 		}
+		cc.init();
 		logger.info("Connected, "+n+" handshake packets sent");		
 	}
-
 	
 	@Override
 	public void received(UDTPacket packet, Destination peer) {

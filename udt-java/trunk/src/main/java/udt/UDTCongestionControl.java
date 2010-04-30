@@ -16,33 +16,30 @@ public class UDTCongestionControl implements CongestionControl {
 
 	private static final Logger logger=Logger.getLogger(UDTCongestionControl.class.getName());
 
-	private final UDTSession session;
+	protected final UDTSession session;
 
-	private final UDTStatistics statistics;
+	protected final UDTStatistics statistics;
 
 	//round trip time in microseconds
-	private long roundTripTime=0;
+	protected long roundTripTime=0;
 
 	//rate in packets per second
-	private long packetArrivalRate=0;
+	protected long packetArrivalRate=0;
 
 	//link capacity in packets per second
-	private long estimatedLinkCapacity=0;
+	protected long estimatedLinkCapacity=0;
 
 	// Packet sending period = packet send interval, in microseconds
-	private double packetSendingPeriod=1;              
+	protected double packetSendingPeriod=1;              
 
 	// Congestion window size, in packets
-	private long congestionWindowSize=16;
-
-	//last rate increase time (microsecond value)
-	long lastRateIncreaseTime=Util.getCurrentTime();
+	protected double congestionWindowSize=16;
 
 	/*if in slow start phase*/
-	boolean slowStartPhase=true;
+	private boolean slowStartPhase=true;
 
 	/*last ACKed seq no*/
-	long lastAckSeqNumber=-1;
+	private long lastAckSeqNumber=-1;
 
 	/*max packet seq. no. sent out when last decrease happened*/
 	private	long lastDecreaseSeqNo;
@@ -62,11 +59,13 @@ public class UDTCongestionControl implements CongestionControl {
 	//this flag avoids immediate rate increase after a NAK
 	private boolean loss=false;
 
+	//if larger than 0, the receiver should acknowledge every n'th packet
+	protected long ackInterval=-1;
+	
 	public UDTCongestionControl(UDTSession session){
 		this.session=session;
 		this.statistics=session.getStatistics();
 		lastDecreaseSeqNo=session.getInitialSequenceNumber()-1;
-		init();
 	}
 
 	/* (non-Javadoc)
@@ -108,11 +107,21 @@ public class UDTCongestionControl implements CongestionControl {
 		return packetSendingPeriod;
 	}
 
+	public long getAckInterval(){
+		return ackInterval;
+	}
+	public void setAckInterval(long ackInterval){
+		this.ackInterval=ackInterval;
+		if(session.getSocket().getReceiver()!=null){
+			session.getSocket().getReceiver().setAckInterval(ackInterval);
+		}
+	}
+	
 	/**
 	 * congestionWindowSize
 	 * @return
 	 */
-	public long getCongestionWindowSize(){
+	public double getCongestionWindowSize(){
 		return congestionWindowSize;
 	}
 
@@ -186,7 +195,7 @@ public class UDTCongestionControl implements CongestionControl {
 	/* (non-Javadoc)
 	 * @see udt.CongestionControl#onNAK(java.util.List)
 	 */
-	public void onNAK(List<Integer>lossInfo){
+	public void onLoss(List<Integer>lossInfo){
 		loss=true;
 		long firstBiggestlossSeqNo=lossInfo.get(0);
 		nACKCount++;
