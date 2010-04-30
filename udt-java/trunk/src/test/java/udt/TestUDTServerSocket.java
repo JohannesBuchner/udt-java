@@ -6,7 +6,7 @@ import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import udt.util.UDTStatistics;
+import udt.util.Util;
 
 public class TestUDTServerSocket extends UDTTestBase{
 	
@@ -115,7 +115,7 @@ public class TestUDTServerSocket extends UDTTestBase{
 					}
 					System.out.println("Server thread exiting.");
 					serverRunning=false;
-					md5_received=UDTStatistics.hexString(md5);
+					md5_received=Util.hexString(md5);
 					serverSocket.shutDown();
 					System.out.println(s.getSession().getStatistics());
 				}

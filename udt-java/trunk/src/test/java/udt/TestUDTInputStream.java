@@ -3,6 +3,7 @@ package udt;
 import java.security.MessageDigest;
 
 import udt.util.UDTStatistics;
+import udt.util.Util;
 
 public class TestUDTInputStream extends UDTTestBase{
 
@@ -18,8 +19,8 @@ public class TestUDTInputStream extends UDTTestBase{
 		is.haveNewData(3, data3);
 		is.noMoreData();
 		is.setBlocking(false);
-		readAll(is,8);
-		assertEquals(digest,stat.getDigest());
+		String readMD5=readAll(is,8);
+		assertEquals(digest,readMD5);
 	}
 	
 	public void test2()throws Exception{
@@ -34,8 +35,8 @@ public class TestUDTInputStream extends UDTTestBase{
 		is.haveNewData(2, data2);
 		is.haveNewData(3, data3);
 		is.noMoreData();
-		readAll(is,5*1024*1024);
-		assertEquals(digest,stat.getDigest());
+		String readMD5=readAll(is,5*1024*1024);
+		assertEquals(digest,readMD5);
 	}
 	
 	public void testInOrder()throws Exception{
@@ -52,8 +53,8 @@ public class TestUDTInputStream extends UDTTestBase{
 		}
 		is.noMoreData();
 		
-		readAll(is,1024*999);
-		assertEquals(digest,stat.getDigest());
+		String readMD5 = readAll(is,1024*999);
+		assertEquals(digest,readMD5);
 	}
 	
 	public void testRandomOrder()throws Exception{
@@ -70,9 +71,9 @@ public class TestUDTInputStream extends UDTTestBase{
 		for(int i : order){
 			is.haveNewData(i+1, blocks[i]);
 		}
-		readAll(is,512,true);
+		String readMD5=readAll(is,512,true);
 		
-		assertEquals(digest,stat.getDigest());
+		assertEquals(digest,readMD5);
 	}
 	
 	//read and discard data from the given input stream
@@ -89,7 +90,7 @@ public class TestUDTInputStream extends UDTTestBase{
 				if(c>0)d.update(buf,0,c);
 			}
 		}
-		return UDTStatistics.hexString(d);
+		return Util.hexString(d);
 	}
 	
 }

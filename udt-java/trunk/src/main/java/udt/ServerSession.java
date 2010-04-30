@@ -80,6 +80,7 @@ public class ServerSession extends UDTSession {
 				try{
 					setState(ready);
 					socket=new UDTSocket(endPoint, this);
+					cc.init();
 				}catch(Exception uhe){
 					//session is invalid
 					logger.log(Level.SEVERE,"",uhe);

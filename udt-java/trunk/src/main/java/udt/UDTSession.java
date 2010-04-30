@@ -34,6 +34,7 @@ package udt;
 
 import java.net.DatagramPacket;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import udt.packets.Destination;
@@ -72,7 +73,7 @@ public abstract class UDTSession {
 	 * flow window size, i.e. how many data packets are
 	 * in-flight at a single time
 	 */
-	protected int flowWindowSize=128;
+	protected int flowWindowSize=4*128;
 
 	/**
 	 * remote UDT entity (address and socket ID)
@@ -110,20 +111,22 @@ public abstract class UDTSession {
 		mySocketID=nextSocketID.incrementAndGet();
 		this.destination=destination;
 		this.dgPacket=new DatagramPacket(new byte[0],0,destination.getAddress(),destination.getPort());
-		//init configurable CC
 		String clazzP=System.getProperty(CC_CLASS,UDTCongestionControl.class.getName());
 		Object ccObject=null;
 		try{
 			Class<?>clazz=Class.forName(clazzP);
 			ccObject=clazz.getDeclaredConstructor(UDTSession.class).newInstance(this);
 		}catch(Exception e){
+			logger.log(Level.WARNING,"Can't setup congestion control class <"+clazzP+">, using default.",e);
 			ccObject=new UDTCongestionControl(this);
 		}
 		cc=(CongestionControl)ccObject;
-		System.out.println("using "+cc.getClass().getName());
+		logger.info("Using "+cc.getClass().getName());
 	}
 	
+	
 	public abstract void received(UDTPacket packet, Destination peer);
+	
 	
 	public UDTSocket getSocket() {
 		return socket;
