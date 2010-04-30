@@ -13,7 +13,7 @@ public class TestUDTLargeDataCC1 extends TestUDTLargeData{
 	boolean running=false;
 
 	//how many
-	int num_packets=50;
+	int num_packets=100;
 	
 	//how large is a single packet
 	int size=1*1024*1024;

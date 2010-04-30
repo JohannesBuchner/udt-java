@@ -39,7 +39,7 @@ import java.util.LinkedList;
 public class SenderLossList {
 
 	private final LinkedList<Long>backingList;
-	
+
 	/**
 	 * create a new sender lost list
 	 */
@@ -48,17 +48,15 @@ public class SenderLossList {
 	}
 
 	public void insert(Long obj){
-		if(obj==null)System.out.println("!!!");
 		synchronized (backingList) {
 			if(!backingList.contains(obj)){
-				if(backingList.isEmpty())backingList.add(obj);
-				else{
-					for(int i=0;i<backingList.size();i++){
-						if(obj<backingList.getFirst()){
-							backingList.add(i,obj);	
-						}
+				for(int i=0;i<backingList.size();i++){
+					if(obj<backingList.getFirst()){
+						backingList.add(i,obj);	
+						return;
 					}
 				}
+				backingList.add(obj);
 			}
 		}
 	}
@@ -76,7 +74,13 @@ public class SenderLossList {
 		return backingList.isEmpty();
 	}
 
+	public int size(){
+		return backingList.size();
+	}
+
 	public String toString(){
-		return backingList.toString();
+		synchronized (backingList) {
+			return backingList.toString();	
+		}
 	}
 }

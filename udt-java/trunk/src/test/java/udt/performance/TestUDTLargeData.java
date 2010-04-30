@@ -21,7 +21,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=100;
+	int num_packets=500;
 	
 	//how large is a single packet
 	int size=1*1024*1024;

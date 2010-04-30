@@ -91,13 +91,13 @@ public class UDTSender {
 	private final AtomicInteger unacknowledged=new AtomicInteger(0);
 
 	//for generating data packet sequence numbers
-	private long nextSequenceNumber=0;
+	private volatile long currentSequenceNumber=0;
 
 	//the largest data packet sequence number that has actually been sent out
 	private volatile long largestSentSequenceNumber=-1;
 
 	//last acknowledge number, initialised to the initial sequence number
-	private long lastAckSequenceNumber;
+	private volatile long lastAckSequenceNumber;
 
 	private volatile boolean started=false;
 
@@ -269,8 +269,6 @@ public class UDTSender {
 	 * @param nak
 	 */
 	protected void onNAKPacketReceived(NegativeAcknowledgement nak){
-		waitForAckLatch.get().countDown();
-
 		for(Integer i: nak.getDecodedLossInfo()){
 			senderLossList.insert(Long.valueOf(i));
 		}
@@ -283,7 +281,6 @@ public class UDTSender {
 			logger.finer("NAK for "+nak.getDecodedLossInfo().size()+" packets lost, " 
 					+"set send period to "+session.getCongestionControl().getSendInterval());
 		}
-
 		return;
 	}
 
@@ -382,7 +379,7 @@ public class UDTSender {
 			if(pktToRetransmit!=null){
 				endpoint.doSend(pktToRetransmit);
 				statistics.incNumberOfRetransmittedDataPackets();
-			}		
+			}
 		}catch (Exception e) {
 			logger.log(Level.WARNING,"",e);
 		}
@@ -404,12 +401,12 @@ public class UDTSender {
 	 * The initial sequence number is "0"
 	 */
 	public long getNextSequenceNumber(){
-		nextSequenceNumber++;
-		return nextSequenceNumber;
+		currentSequenceNumber++;
+		return currentSequenceNumber;
 	}
 
 	public long getCurrentSequenceNumber(){
-		return nextSequenceNumber;
+		return currentSequenceNumber;
 	}
 
 	/**
