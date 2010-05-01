@@ -50,6 +50,7 @@ import udt.packets.DataPacket;
 import udt.packets.KeepAlive;
 import udt.packets.NegativeAcknowledgement;
 import udt.sender.SenderLossList;
+import udt.util.MeanThroughput;
 import udt.util.MeanValue;
 import udt.util.UDTStatistics;
 import udt.util.UDTThreadFactory;
@@ -114,6 +115,8 @@ public class UDTSender {
 	//used by the sender to wait for an ACK of a certain sequence number
 	private final AtomicReference<CountDownLatch> waitForSeqAckLatch=new AtomicReference<CountDownLatch>();
 
+	private final boolean storeStatistics;
+
 	public UDTSender(UDTSession session,UDPEndPoint endpoint){
 		if(!session.isReady())throw new IllegalStateException("UDTSession is not ready.");
 		this.endpoint= endpoint;
@@ -125,17 +128,22 @@ public class UDTSender {
 		lastAckSequenceNumber=session.getInitialSequenceNumber();
 		waitForAckLatch.set(new CountDownLatch(1));
 		waitForSeqAckLatch.set(new CountDownLatch(1));
+		storeStatistics=Boolean.getBoolean("udt.sender.storeStatistics");
 		initMetrics();
 		doStart();
 	}
 
 	private MeanValue dgSendTime;
 	private MeanValue dgSendInterval;
+	private MeanThroughput throughput;
 	private void initMetrics(){
+		if(!storeStatistics)return;
 		dgSendTime=new MeanValue("Datagram send time");
 		statistics.addMetric(dgSendTime);
 		dgSendInterval=new MeanValue("Datagram send interval");
 		statistics.addMetric(dgSendInterval);
+		throughput=new MeanThroughput("Throughput", session.getDatagramSize());
+		statistics.addMetric(throughput);
 	}
 
 	/**
@@ -182,11 +190,17 @@ public class UDTSender {
 	 */
 	private void send(DataPacket p)throws IOException{
 		synchronized(sendLock){
-			dgSendInterval.end();
-			dgSendTime.begin();
+			if(storeStatistics){
+				dgSendInterval.end();
+				dgSendTime.begin();
+			}
 			endpoint.doSend(p);
-			dgSendTime.end();
-			dgSendInterval.begin();
+			if(storeStatistics){
+				dgSendTime.end();
+				dgSendInterval.begin();
+				throughput.end();
+				throughput.begin();
+			}
 			sendBuffer.put(p.getPacketSequenceNumber(), p);
 			unacknowledged.incrementAndGet();
 		}
@@ -261,7 +275,7 @@ public class UDTSender {
 		//send ACK2 packet to the receiver
 		sendAck2(ackNumber);
 		statistics.incNumberOfACKReceived();
-		statistics.storeParameters();
+		if(storeStatistics)statistics.storeParameters();
 	}
 
 	/**
@@ -275,8 +289,7 @@ public class UDTSender {
 		session.getCongestionControl().onLoss(nak.getDecodedLossInfo());
 		session.getSocket().getReceiver().resetEXPTimer();
 		statistics.incNumberOfNAKReceived();
-		statistics.storeParameters();
-
+	
 		if(logger.isLoggable(Level.FINER)){
 			logger.finer("NAK for "+nak.getDecodedLossInfo().size()+" packets lost, " 
 					+"set send period to "+session.getCongestionControl().getSendInterval());
@@ -303,9 +316,7 @@ public class UDTSender {
 	/**
 	 * sender algorithm
 	 */
-	MeanValue v=new MeanValue("Wait for Ack time: ");
 	public void senderAlgorithm()throws InterruptedException, IOException{
-		statistics.addMetric(v);
 		while(!paused){
 
 			long iterationStart=Util.getCurrentTime(); //last packet send time?
@@ -338,9 +349,7 @@ public class UDTSender {
 					if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
 						statistics.incNumberOfCCWindowExceededEvents();
 					}
-					v.begin();
 					waitForAck();
-					v.end();
 				}
 			}
 
@@ -356,6 +365,7 @@ public class UDTSender {
 						x++;
 					}
 					passed=Util.getCurrentTime()-iterationStart;
+					if(stopped)return;
 				}
 			}
 		}

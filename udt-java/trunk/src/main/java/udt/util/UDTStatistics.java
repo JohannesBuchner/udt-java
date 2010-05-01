@@ -42,7 +42,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class is used to keep some statistics about a UDT connection. 
- * It also allows to compute a MD5 hash over the received data
  */
 public class UDTStatistics {
 
@@ -226,10 +225,10 @@ public class UDTStatistics {
 		synchronized (statsHistory) {
 			if(first){
 				first=false;
-				statsHistory.add(new StatisticsHistoryEntry(true,0,"time","packetRate","sendPeriod"));
+				statsHistory.add(new StatisticsHistoryEntry(true,0,metrics));
 				initialTime=System.currentTimeMillis();
 			}
-			statsHistory.add(new StatisticsHistoryEntry(false,System.currentTimeMillis()-initialTime,packetArrivalRate,sendPeriod));
+			statsHistory.add(new StatisticsHistoryEntry(false,System.currentTimeMillis()-initialTime,metrics));
 		}
 	}
 

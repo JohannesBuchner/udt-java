@@ -1,6 +1,7 @@
 package udt.util;
 
 import java.text.NumberFormat;
+import java.util.Locale;
 
 /**
  * holds a floating mean value
@@ -31,20 +32,20 @@ public class MeanValue {
 	}
 	
 	public MeanValue(String name, boolean verbose, int nValue){
-		format=NumberFormat.getNumberInstance();
+		format=NumberFormat.getNumberInstance(Locale.ENGLISH);
 		format.setMaximumFractionDigits(2);
+		format.setGroupingUsed(false);
 		this.verbose=verbose;
 		this.nValue=nValue;
 		this.name=name;
-		begin();
 	}
 	
 	public void addValue(double value){
 		mean=(mean*n+value)/(n+1);
 		n++;
 		if(verbose &&  n % nValue == 0){
-			if(msg!=null)System.out.print(msg+" ");
-			System.out.println(getFormattedMean());
+			if(msg!=null)System.out.println(msg+" "+getFormattedMean());
+			else System.out.println(getFormattedMean());
 		}
 	}
 	
@@ -53,7 +54,7 @@ public class MeanValue {
 	}
 	
 	public String getFormattedMean(){
-		return format.format(mean);
+		return format.format(getMean());
 	}
 	
 	public void clear(){
@@ -66,7 +67,7 @@ public class MeanValue {
 	}
 	
 	public void end(){
-		addValue(Util.getCurrentTime()-start);
+		if(start>0)addValue(Util.getCurrentTime()-start);
 	}
 	public void end(String msg){
 		this.msg=msg;
@@ -74,6 +75,10 @@ public class MeanValue {
 	}
 	
 	public String getName(){
+		return name;
+	}
+	
+	public String toString(){
 		return name;
 	}
 }

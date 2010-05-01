@@ -36,5 +36,5 @@ CP=$INST/lib/udt*.jar
 #memory for the VM
 MEM=-Xmx128m
 
-$JAVA $MEM -cp $CP udt.unicore.FufexReceive $*
+$JAVA $MEM $OPTS -cp $CP udt.unicore.FufexReceive $*
 

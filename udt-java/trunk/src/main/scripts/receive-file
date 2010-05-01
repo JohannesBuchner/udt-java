@@ -1,6 +1,15 @@
 #!/bin/sh
 
 #
+# Start script for the UDT-Java send-file application
+# Usage: receive-file <server-address> <server-port> <remote-file> <local-file>
+#                     [--localIP=<local ip>]
+#                     [--localPort=<local port>] 
+#                     [--verbose]
+#
+#
+
+#
 #Installation Directory
 #
 dir=`dirname $0`
@@ -24,6 +33,12 @@ INST=${INST:-.}
 #
 #INST=
 
+#
+# Alternative CC class
+#
+#OPTS=$OPTS" -Dudt.congestioncontrol.class=udt.cc.SimpleTCP"
+
+#Java command to use
 JAVA=java
 
 #location of udt.jar
@@ -32,5 +47,5 @@ CP=$INST/lib/udt*.jar
 #memory for the VM
 MEM=-Xmx128m
 
-$JAVA $MEM -cp $CP udt.util.ReceiveFile $*
+$JAVA $MEM $OPTS -cp $CP udt.util.ReceiveFile $*
 
