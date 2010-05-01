@@ -157,8 +157,11 @@ public class SendFile extends Application{
 					System.out.println(socket.getSession().getStatistics().toString());
 					double rate=1000.0*size/1024/1024/(end-start);
 					System.out.println("[SendFile] Rate: "+format.format(rate)+" MBytes/sec. "+format.format(8*rate)+" MBit/sec.");
-					socket.getSession().getStatistics().writeParameterHistory(new File("udtstats-"+System.currentTimeMillis()+".csv"));
+					if(Boolean.getBoolean("udt.sender.storeStatistics")){
+						socket.getSession().getStatistics().writeParameterHistory(new File("udtstats-"+System.currentTimeMillis()+".csv"));
+					}
 				}finally{
+					socket.getSender().stop();
 					fis.close();
 				}
 				logger.info("Finished request from "+socket.getSession().getDestination());

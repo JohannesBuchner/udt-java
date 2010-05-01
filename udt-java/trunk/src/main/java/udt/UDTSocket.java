@@ -204,6 +204,7 @@ public class UDTSocket {
 				sender.waitForAck(seqNo);
 			}
 		}
+		sender.pause();
 	}
 	
 	//writes and wait for ack

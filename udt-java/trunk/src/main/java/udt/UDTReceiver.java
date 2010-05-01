@@ -152,6 +152,8 @@ public class UDTReceiver {
 	 */
 	public static boolean connectionExpiryDisabled=false;
 
+	private final boolean storeStatistics;
+	
 	/**
 	 * create a receiver with a valid {@link UDTSession}
 	 * @param session
@@ -169,6 +171,7 @@ public class UDTReceiver {
 		largestReceivedSeqNumber=session.getInitialSequenceNumber()-1;
 		bufferSize=session.getReceiveBufferSize();
 		handoffQueue=new ArrayBlockingQueue<UDTPacket>(4*session.getFlowWindowSize());
+		storeStatistics=Boolean.getBoolean("udt.receiver.storeStatistics");
 		initMetrics();
 		start();
 	}
@@ -178,6 +181,7 @@ public class UDTReceiver {
 	private MeanValue processTime;
 	private MeanValue dataProcessTime;
 	private void initMetrics(){
+		if(!storeStatistics)return;
 		dgReceiveInterval=new MeanValue("UDT receive interval");
 		statistics.addMetric(dgReceiveInterval);
 		dataPacketInterval=new MeanValue("Data packet interval");
@@ -216,9 +220,9 @@ public class UDTReceiver {
 	 * packets are written by the endpoint
 	 */
 	protected void receive(UDTPacket p)throws IOException{
-		dgReceiveInterval.end();
+		if(storeStatistics)dgReceiveInterval.end();
 		handoffQueue.offer(p);
-		dgReceiveInterval.begin();
+		if(storeStatistics)dgReceiveInterval.begin();
 	}
 
 	/**
@@ -261,9 +265,11 @@ public class UDTReceiver {
 			if(needEXPReset){
 				nextEXP=Util.getCurrentTime()+expTimerInterval;
 			}
-			processTime.begin();
+			if(storeStatistics)processTime.begin();
+			
 			processUDTPacket(packet);
-			processTime.end();
+			
+			if(storeStatistics)processTime.end();
 		}
 		
 		Thread.yield();
@@ -348,11 +354,15 @@ public class UDTReceiver {
 		
 		if(!p.isControlPacket()){
 			DataPacket dp=(DataPacket)p;
-			dataPacketInterval.end();
-			dataProcessTime.begin();
+			if(storeStatistics){
+				dataPacketInterval.end();
+				dataProcessTime.begin();
+			}
 			onDataPacketReceived(dp);
-			dataProcessTime.end();
-			dataPacketInterval.begin();
+			if(storeStatistics){
+				dataProcessTime.end();
+				dataPacketInterval.begin();
+			}
 		}
 
 		else if (p.getControlPacketType()==ControlPacketType.ACK2.ordinal()){
