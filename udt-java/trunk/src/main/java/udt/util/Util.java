@@ -55,11 +55,16 @@ public class Util {
 		return System.nanoTime()/1000;
 	}
 	
+	
+	public static final long SYN=10000;
+	
+	public static final double SYN_D=10000.0;
+	
 	/**
 	 * get the SYN time in microseconds. The SYN time is 0.01 seconds = 10000 microseconds
 	 * @return
 	 */
-	public static long getSYNTime(){
+	public static final long getSYNTime(){
 		return 10000;
 	}
 	
@@ -122,7 +127,7 @@ public class Util {
 	 * @throws IOException
 	 */
 	public static void copy(InputStream source, OutputStream target, long size, boolean flush)throws IOException{
-		byte[]buf=new byte[65536];
+		byte[]buf=new byte[8*65536];
 		int c;
 		long read=0;
 		while(true){
