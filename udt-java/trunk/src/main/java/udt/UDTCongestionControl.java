@@ -71,7 +71,8 @@ public class UDTCongestionControl implements CongestionControl {
 	/* (non-Javadoc)
 	 * @see udt.CongestionControl#init()
 	 */
-	public void init() {	
+	public void init() {
+		setAckInterval(10);
 	}
 
 	/* (non-Javadoc)
@@ -112,7 +113,7 @@ public class UDTCongestionControl implements CongestionControl {
 	}
 	public void setAckInterval(long ackInterval){
 		this.ackInterval=ackInterval;
-		if(session.getSocket().getReceiver()!=null){
+		if(session.getSocket()!=null && session.getSocket().getReceiver()!=null){
 			session.getSocket().getReceiver().setAckInterval(ackInterval);
 		}
 	}
