@@ -34,8 +34,13 @@ package udt.util;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileChannel.MapMode;
 import java.text.NumberFormat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -120,9 +125,11 @@ public class SendFile extends Application{
 		
 		private final NumberFormat format=NumberFormat.getNumberInstance();
 		
+		private final boolean memMapped;
 		public RequestRunner(UDTSocket socket){
 			this.socket=socket;
 			format.setMaximumFractionDigits(3);
+			memMapped=true;
 		}
 		
 		public void run(){
@@ -144,7 +151,7 @@ public class SendFile extends Application{
 				File file=new File(new String(fileName));
 				System.out.println("[SendFile] File requested: '"+file.getPath()+"'");
 
-				FileInputStream fis=new FileInputStream(file);
+				FileInputStream fis=null;
 				try{
 					long size=file.length();
 					System.out.println("[SendFile] File size: "+size);
@@ -152,7 +159,12 @@ public class SendFile extends Application{
 					out.write(PacketUtil.encode(size));
 					long start=System.currentTimeMillis();
 					//and send the file
-					Util.copy(fis, out, size, false);
+					if(memMapped){
+						copyFile(file,out);
+					}else{
+						fis=new FileInputStream(file);
+						Util.copy(fis, out, size, false);
+					}
 					long end=System.currentTimeMillis();
 					System.out.println(socket.getSession().getStatistics().toString());
 					double rate=1000.0*size/1024/1024/(end-start);
@@ -162,7 +174,7 @@ public class SendFile extends Application{
 					}
 				}finally{
 					socket.getSender().stop();
-					fis.close();
+					if(fis!=null)fis.close();
 				}
 				logger.info("Finished request from "+socket.getSession().getDestination());
 			}catch(Exception ex){
@@ -172,5 +184,18 @@ public class SendFile extends Application{
 		}
 	}
 	
+	
+	private static void copyFile(File file, OutputStream os)throws Exception{
+		FileChannel c=new RandomAccessFile(file,"r").getChannel();
+		MappedByteBuffer b=c.map(MapMode.READ_ONLY, 0, file.length());
+		byte[]buf=new byte[1024*1024];
+		int len=0;
+		while(true){
+			len=Math.min(buf.length, b.remaining());
+			b.get(buf, 0, len);
+			os.write(buf, 0, len);
+			if(b.remaining()==0)break;
+		}
+	}	
 	
 }
