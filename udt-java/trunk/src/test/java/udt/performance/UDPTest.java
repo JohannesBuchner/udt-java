@@ -9,6 +9,7 @@ import java.util.concurrent.SynchronousQueue;
 
 import junit.framework.TestCase;
 import udt.UDPEndPoint;
+import udt.packets.DataPacket;
 import udt.util.MeanValue;
 
 /**
@@ -16,7 +17,7 @@ import udt.util.MeanValue;
  */
 public class UDPTest extends TestCase {
 
-	final int num_packets=10*1000;
+	final int num_packets=10*10*1000;
 	final int packetSize=UDPEndPoint.DATAGRAM_SIZE;
 
 	public void test1()throws Exception{
@@ -35,8 +36,14 @@ public class UDPTest extends TestCase {
 		System.out.println("Sending "+num_packets+" data blocks of <"+packetSize+"> bytes");
 		MeanValue v=new MeanValue("Datagram send time",false);
 		MeanValue v2=new MeanValue("Datagram send interval",false);
+		MeanValue v3=new MeanValue("Encoding time",false);
+		
 		for(int i=0;i<num_packets;i++){
-			dp.setData(data);
+			DataPacket p=new DataPacket();
+			p.setData(data);
+			v3.begin();
+			dp.setData(p.getEncoded());
+			v3.end();
 			v2.end();
 			v.begin();
 			s.send(dp);
@@ -52,6 +59,7 @@ public class UDPTest extends TestCase {
 		System.out.println("Rate "+num_packets+" packets/sec");
 		System.out.println("Mean send time "+v.getFormattedMean()+" microsec");
 		System.out.println("Mean send interval "+v2.getFormattedMean()+" microsec");
+		System.out.println("Datapacket encoding time "+v3.getFormattedMean()+" microsec");
 		System.out.println("Server received: "+total);
 	}
 
@@ -92,7 +100,7 @@ public class UDPTest extends TestCase {
 					long start=System.currentTimeMillis();
 					while(true){
 						DatagramPacket dp=handoff.poll();
-						total+=dp.getLength();
+						if(dp!=null)total+=dp.getLength();
 						if(total==N)break;
 					}
 					long end=System.currentTimeMillis();

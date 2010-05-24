@@ -152,9 +152,10 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 	 */
 	public byte[] getEncoded(){
 		byte[] header=getHeader();
-		byte[] result=new byte[header.length+data.length];
-		System.arraycopy(header, 0, result, 0, header.length);
-		System.arraycopy(data, 0, result, header.length, data.length);
+		//header.length is 16
+		byte[] result=new byte[16+data.length];
+		System.arraycopy(header, 0, result, 0, 16);
+		System.arraycopy(data, 0, result, 16, data.length);
 		return result;
 	}
 

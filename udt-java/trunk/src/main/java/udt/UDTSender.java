@@ -34,10 +34,10 @@ package udt;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -124,7 +124,7 @@ public class UDTSender {
 		statistics=session.getStatistics();
 		senderLossList=new SenderLossList();
 		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(session.getFlowWindowSize(),0.75f,2); 
-		sendQueue = new LinkedBlockingQueue<DataPacket>(1000);  
+		sendQueue = new ArrayBlockingQueue<DataPacket>(1000);  
 		lastAckSequenceNumber=session.getInitialSequenceNumber();
 		waitForAckLatch.set(new CountDownLatch(1));
 		waitForSeqAckLatch.set(new CountDownLatch(1));
@@ -316,11 +316,11 @@ public class UDTSender {
 	/**
 	 * sender algorithm
 	 */
+	long iterationStart;
 	public void senderAlgorithm()throws InterruptedException, IOException{
 		while(!paused){
-
-			long iterationStart=Util.getCurrentTime(); //last packet send time?
-
+			iterationStart=Util.getCurrentTime();
+			
 			//if the sender's loss list is not empty 
 			if (!senderLossList.isEmpty()) {
 				Long entry=senderLossList.getFirstEntry();
@@ -336,7 +336,7 @@ public class UDTSender {
 				if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
 						 && unAcknowledged<session.getFlowWindowSize()){
 					//check for application data
-					DataPacket dp=sendQueue.poll();
+					DataPacket dp=sendQueue.poll(Util.SYN,TimeUnit.MICROSECONDS);
 					if(dp!=null){
 						send(dp);
 						largestSentSequenceNumber=dp.getPacketSequenceNumber();
@@ -345,7 +345,7 @@ public class UDTSender {
 						statistics.incNumberOfMissingDataEvents();
 					}
 				}else{
-					//congestion window full, should we *really* wait for an ack?!
+					//congestion window full, wait for an ack
 					if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
 						statistics.incNumberOfCCWindowExceededEvents();
 					}
@@ -355,7 +355,7 @@ public class UDTSender {
 
 			//wait
 			if(largestSentSequenceNumber % 16 !=0){
-				double snd=session.getCongestionControl().getSendInterval();
+				long snd=(long)session.getCongestionControl().getSendInterval();
 				long passed=Util.getCurrentTime()-iterationStart;
 				int x=0;
 				while(snd-passed>0){
@@ -376,13 +376,6 @@ public class UDTSender {
 	 * @param entry
 	 */
 	protected void handleResubmit(Long seqNumber){
-		//long seqNumber=entry.getSequenceNumber();
-		//TODO
-		//if the current seqNumber is 16n,check the timeOut in the 
-		//loss list and send a message drop request.
-		//if((seqNumber%16)==0){
-		//sendLossList.checkTimeOut(timeToLive);
-		//}
 		try {
 			//retransmit the packet and remove it from  the list
 			DataPacket pktToRetransmit = sendBuffer.get(seqNumber);
