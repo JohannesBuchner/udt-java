@@ -145,7 +145,7 @@ public class SendFile extends Application{
 
 				//how many bytes to read for the file name
 				int length=bb.getInt();
-				byte[]fileName=new byte[length];
+				byte[]fileName=new byte[length-1];
 				bb.get(fileName);
 
 				File file=new File(new String(fileName));
