@@ -196,6 +196,7 @@ public class SendFile extends Application{
 			os.write(buf, 0, len);
 			if(b.remaining()==0)break;
 		}
+		os.flush();
 	}	
 	
 }
