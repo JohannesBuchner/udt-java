@@ -72,7 +72,7 @@ public class UDTCongestionControl implements CongestionControl {
 	 * @see udt.CongestionControl#init()
 	 */
 	public void init() {
-		setAckInterval(10);
+		
 	}
 
 	/* (non-Javadoc)

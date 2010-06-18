@@ -66,17 +66,18 @@ public class UDPEndPoint {
 	private final DatagramSocket dgSocket;
 
 	//active sessions keyed by socket ID
-	private final Map<Long,UDTSession>sessions;
+	private final Map<Long,UDTSession>sessions=new ConcurrentHashMap<Long, UDTSession>();
 
 	//connecting sessions keyed by peer destination
-	private final Map<Destination,UDTSession>clientSessions;
+	private final Map<Destination,UDTSession>clientSessions=new ConcurrentHashMap<Destination, UDTSession>();;
 
 	//last received packet
 	private UDTPacket lastPacket;
 
 	//if the endpoint is configured for a server socket,
 	//this queue is used to handoff new UDTSessions to the application
-	private final SynchronousQueue<UDTSession> sessionHandoff;
+	private final SynchronousQueue<UDTSession> sessionHandoff=new SynchronousQueue<UDTSession>();
+	
 	private boolean serverSocketMode=false;
 
 	//has the endpoint been stopped?
@@ -84,6 +85,16 @@ public class UDPEndPoint {
 
 	public static final int DATAGRAM_SIZE=1500;
 
+	/**
+	 * create an endpoint on the given socket
+	 * 
+	 * @param socket -  a UDP datagram socket
+	 */
+	public UDPEndPoint(DatagramSocket socket){
+		this.dgSocket=socket;
+		port=dgSocket.getLocalPort();
+	}
+	
 	/**
 	 * bind to any local port on the given host address
 	 * @param localAddress
@@ -109,9 +120,7 @@ public class UDPEndPoint {
 		}
 		if(localPort>0)this.port = localPort;
 		else port=dgSocket.getLocalPort();
-		sessions=new ConcurrentHashMap<Long, UDTSession>();
-		clientSessions=new ConcurrentHashMap<Destination, UDTSession>();
-		sessionHandoff=new SynchronousQueue<UDTSession>();
+		
 		//set a time out to avoid blocking in doReceive()
 		dgSocket.setSoTimeout(100000);
 		//buffer size
