@@ -136,7 +136,7 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 		//sequence number with highest bit set to "0"
 		try{
 			ByteArrayOutputStream bos=new ByteArrayOutputStream(16);
-			bos.write(PacketUtil.encodeSetHighest(false, packetSequenceNumber));
+			bos.write(PacketUtil.encode(packetSequenceNumber));
 			bos.write(PacketUtil.encode(messageNumber));
 			bos.write(PacketUtil.encode(timeStamp));
 			bos.write(PacketUtil.encode(destinationID));

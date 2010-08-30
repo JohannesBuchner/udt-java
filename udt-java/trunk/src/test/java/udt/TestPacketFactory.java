@@ -16,26 +16,27 @@ import udt.packets.Shutdown;
 public class TestPacketFactory extends TestCase {
 
 	public void testData(){
-		byte[]data="sdjfsdjfldskjflds".getBytes();
+		String test="sdjfsdjfldskjflds";
+		
+		byte[]data=test.getBytes();
 		data[0]=(byte)(data[0] & 0x7f);
 		UDTPacket p=PacketFactory.createPacket(data);
 		DataPacket recv=(DataPacket)p;
 		String t=new String(recv.getEncoded());
 		assertTrue(p instanceof DataPacket);
-		assertEquals("sdjfsdjfldskjflds",t);
+		assertEquals(test,t);
 	}
 	
 	
 	public void testConnectionHandshake(){
 		ConnectionHandshake p1 = new ConnectionHandshake();
-		p1.setAckSequenceNumber(1234);
 		p1.setMessageNumber(9876);
 		p1.setTimeStamp(3456);
 		p1.setDestinationID(1);
 		
 		p1.setConnectionType(1);
 		p1.setSocketType(1);
-		p1.setInitialSeqNo(1);
+		p1.setInitialSeqNo(321);
 		p1.setPacketSize(128);
 		p1.setMaxFlowWndSize(128);
 		p1.setSocketID(1);
@@ -58,7 +59,7 @@ public class TestPacketFactory extends TestCase {
 		p1.setDestinationID(1);
 		p1.setBufferSize(128);
 		p1.setEstimatedLinkCapacity(16);
-		p1.setNexttoPrevPktSeqNO(9870);
+		p1.setAckNumber(9870);
 		p1.setPacketReceiveRate(1000);
 		p1.setRoundTripTime(1000);
 		p1.setRoundTripTimeVar(500);
@@ -86,7 +87,6 @@ public class TestPacketFactory extends TestCase {
 	
 	public void testNegativeAcknowledgement(){
 		NegativeAcknowledgement p1 = new NegativeAcknowledgement();
-		p1.setAckSequenceNumber(1231);
 		p1.setMessageNumber(9872);
 		p1.setTimeStamp(3452);
 		p1.setDestinationID(2);
@@ -105,7 +105,6 @@ public class TestPacketFactory extends TestCase {
 	
 	public void testNegativeAcknowledgement2(){
 		NegativeAcknowledgement p1 = new NegativeAcknowledgement();
-		p1.setAckSequenceNumber(1231);
 		p1.setMessageNumber(9872);
 		p1.setTimeStamp(3452);
 		p1.setDestinationID(2);
@@ -130,7 +129,6 @@ public class TestPacketFactory extends TestCase {
 
 	public void testNegativeAcknowledgement3(){
 		NegativeAcknowledgement p1 = new NegativeAcknowledgement();
-		p1.setAckSequenceNumber(1231);
 		p1.setMessageNumber(9872);
 		p1.setTimeStamp(3452);
 		p1.setDestinationID(2);
@@ -148,7 +146,6 @@ public class TestPacketFactory extends TestCase {
 	
 	  public void testShutdown(){
 		Shutdown p1 = new Shutdown();
-		p1.setAckSequenceNumber(1233);
 		p1.setMessageNumber(9874);
 		p1.setTimeStamp(3453);
 		p1.setDestinationID(3);
@@ -165,7 +162,6 @@ public class TestPacketFactory extends TestCase {
 	
 	public void testMessageDropRequest(){
 		MessageDropRequest p1=new MessageDropRequest();
-		p1.setAckSequenceNumber(1234);
 		p1.setMessageNumber(9876);
 		p1.setTimeStamp(3456);
 		p1.setDestinationID(4);

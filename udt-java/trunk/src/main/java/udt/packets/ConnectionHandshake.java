@@ -34,6 +34,8 @@ package udt.packets;
 
 import java.io.ByteArrayOutputStream;
 
+import udt.UDTSession;
+
 public class ConnectionHandshake extends ControlPacket {
 	private long udtVersion=4;
 	
@@ -57,7 +59,6 @@ public class ConnectionHandshake extends ControlPacket {
 	
 	public ConnectionHandshake(byte[]controlInformation){
 		this();
-		//this.controlInformation=controlInformation;
 		decode(controlInformation);
 	}
 	
@@ -171,6 +172,23 @@ public class ConnectionHandshake extends ControlPacket {
 		return true;
 	}
 	
+	
+	public String toString(){
+		StringBuilder sb=new StringBuilder();
+		sb.append("ConnectionHandshake [");
+		UDTSession session=getSession();
+		if(session!=null){
+			sb.append(session.getDestination());
+			sb.append(", ");
+		}
+		sb.append("mySocketID=").append(socketID);
+		sb.append(", initialSeqNo=").append(initialSeqNo);
+		sb.append(", packetSize=").append(packetSize);
+		sb.append(", maxFlowWndSize=").append(maxFlowWndSize);
+		sb.append(", destSocketID=").append(destinationID);
+		sb.append("]");
+		return sb.toString();
+	}
 	
 	
 

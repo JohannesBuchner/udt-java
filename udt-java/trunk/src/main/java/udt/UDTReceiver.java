@@ -500,7 +500,7 @@ public class UDTReceiver {
 	private Acknowledgement buildLightAcknowledgement(long ackNumber){
 		Acknowledgement acknowledgmentPkt = new Acknowledgement();
 		//the packet sequence number to which all the packets have been received
-		acknowledgmentPkt.setNexttoPrevPktSeqNO(ackNumber);
+		acknowledgmentPkt.setAckNumber(ackNumber);
 		//assign this ack a unique increasing ACK sequence number
 		acknowledgmentPkt.setAckSequenceNumber(++ackSequenceNumber);
 		acknowledgmentPkt.setRoundTripTime(roundTripTime);

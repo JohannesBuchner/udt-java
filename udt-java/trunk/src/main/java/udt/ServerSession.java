@@ -56,10 +56,10 @@ public class ServerSession extends UDTSession {
 	//last received packet (for testing purposes)
 	private UDTPacket lastPacket;
 
-	public ServerSession(DatagramPacket dp,UDPEndPoint endPoint)throws SocketException,UnknownHostException{
+	public ServerSession(DatagramPacket dp, UDPEndPoint endPoint)throws SocketException,UnknownHostException{
 		super("ServerSession localPort="+endPoint.getLocalPort()+" peer="+dp.getAddress()+":"+dp.getPort(),new Destination(dp.getAddress(),dp.getPort()));
 		this.endPoint=endPoint;
-		logger.info("Created "+toString()+" talking to "+getDestination());
+		logger.info("Created "+toString()+" talking to "+dp.getAddress()+":"+dp.getPort());
 	}
 
 	int n_handshake=0;
@@ -68,14 +68,16 @@ public class ServerSession extends UDTSession {
 	public void received(UDTPacket packet, Destination peer){
 		lastPacket=packet;
 		if (getState()<=ready && packet instanceof ConnectionHandshake) {
-			logger.info("Received ConnectionHandshake from "+peer);
 			ConnectionHandshake connectionHandshake=(ConnectionHandshake)packet;
 			destination.setSocketID(connectionHandshake.getSocketID());
+			
+			logger.info("Received "+connectionHandshake);
+			
 			if(getState()<=handshaking){
 				setState(handshaking);
 			}
 			try{
-				handleHandShake(connectionHandshake,peer);
+				handleHandShake(connectionHandshake);
 				n_handshake++;
 				try{
 					setState(ready);
@@ -154,7 +156,7 @@ public class ServerSession extends UDTSession {
 	 * @param peer
 	 * @throws IOException
 	 */
-	protected void handleHandShake(ConnectionHandshake handshake,Destination peer)throws IOException{
+	protected void handleHandShake(ConnectionHandshake handshake)throws IOException{
 		ConnectionHandshake responseHandshake = new ConnectionHandshake();
 		//compare the packet size and choose minimun
 		long clientBufferSize=handshake.getPacketSize();
@@ -166,11 +168,13 @@ public class ServerSession extends UDTSession {
 		responseHandshake.setPacketSize(bufferSize);
 		responseHandshake.setUdtVersion(4);
 		responseHandshake.setInitialSeqNo(initialSequenceNumber);
-		responseHandshake.setConnectionType(1);
+		responseHandshake.setConnectionType(-1);
+		responseHandshake.setMaxFlowWndSize(handshake.getMaxFlowWndSize());
 		//tell peer what the socket ID on this side is 
 		responseHandshake.setSocketID(mySocketID);
 		responseHandshake.setDestinationID(this.getDestination().getSocketID());
 		responseHandshake.setSession(this);
+		logger.info("Sending reply "+responseHandshake);
 		endPoint.doSend(responseHandshake);
 	}
 

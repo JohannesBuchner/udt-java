@@ -51,4 +51,23 @@ public abstract class Application implements Runnable {
 		}
 	}
 	
+	
+	
+
+	static long decode(byte[]data, int start){
+		long result = (data[start+3] & 0xFF)<<24
+		             |(data[start+2] & 0xFF)<<16
+					 |(data[start+1] & 0xFF)<<8
+					 |(data[start] & 0xFF);
+		return result;
+	}
+	
+	static byte[]encode(long value){
+		byte m4= (byte) (value>>24 );
+		byte m3=(byte)(value>>16);
+		byte m2=(byte)(value>>8);
+		byte m1=(byte)(value);
+		return new byte[]{m1,m2,m3,m4};
+	}
+	
 }

@@ -135,7 +135,7 @@ public class ClientSession extends UDTSession {
 		handshake.setPacketSize(getDatagramSize());
 		handshake.setSocketID(mySocketID);
 		handshake.setSession(this);
-		logger.info("Handshake to "+this.getDestination());
+		logger.info("Sending "+handshake);
 		endPoint.doSend(handshake);
 	}
 	
