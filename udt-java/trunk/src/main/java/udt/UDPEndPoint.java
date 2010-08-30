@@ -162,7 +162,7 @@ public class UDPEndPoint {
 				try{
 					doReceive();
 				}catch(Exception ex){
-					ex.printStackTrace();
+					logger.log(Level.WARNING,"",ex);
 				}
 			}
 		};
@@ -248,14 +248,16 @@ public class UDPEndPoint {
 	private long lastDestID=-1;
 	private UDTSession lastSession;
 	
-	MeanValue v=new MeanValue("",false);
+	MeanValue v=new MeanValue("receiver processing ",true, 256);
 	
 	protected void doReceive()throws IOException{
 		while(!stopped){
 			try{
 				try{
+					v.end();
 					//will block until a packet is received or timeout has expired
 					dgSocket.receive(dp);
+					v.begin();
 					
 					Destination peer=new Destination(dp.getAddress(), dp.getPort());
 					int l=dp.getLength();

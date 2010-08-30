@@ -54,6 +54,7 @@ import udt.receiver.PacketPairWindow;
 import udt.receiver.ReceiverLossList;
 import udt.receiver.ReceiverLossListEntry;
 import udt.util.MeanValue;
+import udt.util.SequenceNumber;
 import udt.util.UDTStatistics;
 import udt.util.UDTThreadFactory;
 import udt.util.Util;
@@ -417,10 +418,10 @@ public class UDTReceiver {
 		/*(6.a).if the number of the current data packet is greater than LSRN+1,
 			put all the sequence numbers between (but excluding) these two values
 			into the receiver's loss list and send them to the sender in an NAK packet*/
-		if(currentSequenceNumber>largestReceivedSeqNumber+1){
+		if(SequenceNumber.compare(currentSequenceNumber,largestReceivedSeqNumber+1)>0){
 			sendNAK(currentSequenceNumber);
 		}
-		else if(currentSequenceNumber<largestReceivedSeqNumber){
+		else if(SequenceNumber.compare(currentSequenceNumber,largestReceivedSeqNumber)<0){
 				/*(6.b).if the sequence number is less than LRSN,remove it from
 				 * the receiver's loss list
 				 */
@@ -430,7 +431,7 @@ public class UDTReceiver {
 		statistics.incNumberOfReceivedDataPackets();
 
 		//(7).Update the LRSN
-		if(currentSequenceNumber>largestReceivedSeqNumber){
+		if(SequenceNumber.compare(currentSequenceNumber,largestReceivedSeqNumber)>0){
 			largestReceivedSeqNumber=currentSequenceNumber;
 		}
 

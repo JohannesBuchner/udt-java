@@ -40,6 +40,7 @@ import java.util.logging.Logger;
 import udt.packets.ConnectionHandshake;
 import udt.packets.Destination;
 import udt.packets.Shutdown;
+import udt.util.SequenceNumber;
 
 /**
  * Keep state of a UDT connection. Once established, the 
@@ -87,6 +88,7 @@ public class ClientSession extends UDTSession {
 		if (getState()!=ready && packet instanceof ConnectionHandshake) {
 			try{
 				logger.info("Received connection handshake from "+peer);
+				//TODO validate parameters sent by peer
 				setState(ready);
 				long peerSocketID=((ConnectionHandshake)packet).getSocketID();
 				destination.setSocketID(peerSocketID);
@@ -127,7 +129,9 @@ public class ClientSession extends UDTSession {
 		ConnectionHandshake handshake = new ConnectionHandshake();
 		handshake.setConnectionType(1);
 		handshake.setSocketType(1);
-		handshake.setInitialSeqNo(1);
+		long initialSequenceNo=SequenceNumber.random();
+		setInitialSequenceNumber(initialSequenceNo);
+		handshake.setInitialSeqNo(initialSequenceNo);
 		handshake.setPacketSize(getDatagramSize());
 		handshake.setSocketID(mySocketID);
 		handshake.setSession(this);

@@ -52,6 +52,7 @@ import udt.packets.NegativeAcknowledgement;
 import udt.sender.SenderLossList;
 import udt.util.MeanThroughput;
 import udt.util.MeanValue;
+import udt.util.SequenceNumber;
 import udt.util.UDTStatistics;
 import udt.util.UDTThreadFactory;
 import udt.util.Util;
@@ -126,6 +127,7 @@ public class UDTSender {
 		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(session.getFlowWindowSize(),0.75f,2); 
 		sendQueue = new ArrayBlockingQueue<DataPacket>(1000);  
 		lastAckSequenceNumber=session.getInitialSequenceNumber();
+		currentSequenceNumber=session.getInitialSequenceNumber()-1;
 		waitForAckLatch.set(new CountDownLatch(1));
 		waitForSeqAckLatch.set(new CountDownLatch(1));
 		storeStatistics=Boolean.getBoolean("udt.sender.storeStatistics");
@@ -404,7 +406,7 @@ public class UDTSender {
 	 * The initial sequence number is "0"
 	 */
 	public long getNextSequenceNumber(){
-		currentSequenceNumber++;
+		currentSequenceNumber=SequenceNumber.increment(currentSequenceNumber);
 		return currentSequenceNumber;
 	}
 
@@ -426,12 +428,11 @@ public class UDTSender {
 	}
 
 	boolean haveAcknowledgementFor(long sequenceNumber){
-		return sequenceNumber<=lastAckSequenceNumber;
+		return SequenceNumber.compare(sequenceNumber,lastAckSequenceNumber)<=0;
 	}
 
 	boolean isSentOut(long sequenceNumber){
-		return largestSentSequenceNumber>=sequenceNumber;
-
+		return SequenceNumber.compare(largestSentSequenceNumber,sequenceNumber)>=0;
 	}
 
 	boolean haveLostPackets(){

@@ -129,7 +129,7 @@ public class SendFile extends Application{
 		public RequestRunner(UDTSocket socket){
 			this.socket=socket;
 			format.setMaximumFractionDigits(3);
-			memMapped=true;
+			memMapped=false;//true;
 		}
 		
 		public void run(){
@@ -188,6 +188,7 @@ public class SendFile extends Application{
 	private static void copyFile(File file, OutputStream os)throws Exception{
 		FileChannel c=new RandomAccessFile(file,"r").getChannel();
 		MappedByteBuffer b=c.map(MapMode.READ_ONLY, 0, file.length());
+		b.load();
 		byte[]buf=new byte[1024*1024];
 		int len=0;
 		while(true){
