@@ -75,7 +75,7 @@ public class ServerSession extends UDTSession {
 				setState(handshaking);
 			}
 			try{
-				sendResponseHandShake(connectionHandshake,peer);
+				handleHandShake(connectionHandshake,peer);
 				n_handshake++;
 				try{
 					setState(ready);
@@ -144,17 +144,29 @@ public class ServerSession extends UDTSession {
 		return lastPacket;
 	}
 
-	protected void sendResponseHandShake(ConnectionHandshake handshake,Destination peer)throws IOException{
+	/**
+	 * handle the connection handshake:<br/>
+	 * <ul>
+	 * <li>set initial sequence number</li>
+	 * <li>send response handshake</li>
+	 * </ul>
+	 * @param handshake
+	 * @param peer
+	 * @throws IOException
+	 */
+	protected void handleHandShake(ConnectionHandshake handshake,Destination peer)throws IOException{
 		ConnectionHandshake responseHandshake = new ConnectionHandshake();
 		//compare the packet size and choose minimun
 		long clientBufferSize=handshake.getPacketSize();
 		long myBufferSize=getDatagramSize();
 		long bufferSize=Math.min(clientBufferSize, myBufferSize);
+		long initialSequenceNumber=handshake.getInitialSeqNo();
+		setInitialSequenceNumber(initialSequenceNumber);
 		setDatagramSize((int)bufferSize);
 		responseHandshake.setPacketSize(bufferSize);
 		responseHandshake.setUdtVersion(4);
-		responseHandshake.setInitialSeqNo(getInitialSequenceNumber());
-		responseHandshake.setConnectionType(-1);
+		responseHandshake.setInitialSeqNo(initialSequenceNumber);
+		responseHandshake.setConnectionType(1);
 		//tell peer what the socket ID on this side is 
 		responseHandshake.setSocketID(mySocketID);
 		responseHandshake.setDestinationID(this.getDestination().getSocketID());

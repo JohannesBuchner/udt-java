@@ -38,6 +38,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import udt.util.SequenceNumber;
 import udt.util.UDTStatistics;
 
 /**
@@ -58,8 +59,9 @@ public class UDTInputStream extends InputStream {
 
 	private final UDTStatistics statistics;
 
-	//the highest sequence number read by the application
-	private volatile long highestSequenceNumber=0;
+	//the highest sequence number read by the application, initialised
+	//to the initial sequence number minus one
+	private volatile long highestSequenceNumber;
 
 	//set to 'false' by the receiver when it gets a shutdown signal from the peer
 	//see the noMoreData() method
@@ -80,6 +82,7 @@ public class UDTInputStream extends InputStream {
 		this.statistics=statistics;
 		int capacity=socket!=null? 4*socket.getSession().getFlowWindowSize() : 64 ;
 		appData=new PriorityBlockingQueue<AppData>(capacity);
+		highestSequenceNumber=SequenceNumber.decrement(socket.getSession().getInitialSequenceNumber());
 	}
 
 	/**
@@ -177,11 +180,12 @@ public class UDTInputStream extends InputStream {
 			}
 			if(currentChunk!=null){
 				//check if the data is in-order
-				if(currentChunk.sequenceNumber==highestSequenceNumber+1){
-					highestSequenceNumber++;
+				long cmp=SequenceNumber.compare(currentChunk.sequenceNumber,highestSequenceNumber+1);
+				if(cmp==0){
+					highestSequenceNumber=currentChunk.sequenceNumber;
 					return;
 				}
-				else if(currentChunk.sequenceNumber<=highestSequenceNumber){
+				else if(cmp<0){
 					//duplicate, drop it
 					currentChunk=null;
 					statistics.incNumberOfDuplicateDataPackets();
@@ -203,7 +207,7 @@ public class UDTInputStream extends InputStream {
 	 * 
 	 */
 	protected boolean haveNewData(long sequenceNumber,byte[]data)throws IOException{
-		if(sequenceNumber<=highestSequenceNumber)return true;
+		if(SequenceNumber.compare(sequenceNumber,highestSequenceNumber)<=0)return true;
 		return appData.offer(new AppData(sequenceNumber,data));
 	}
 
