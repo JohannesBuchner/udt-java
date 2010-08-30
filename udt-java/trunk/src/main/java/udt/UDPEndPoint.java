@@ -50,7 +50,6 @@ import java.util.logging.Logger;
 import udt.packets.ConnectionHandshake;
 import udt.packets.Destination;
 import udt.packets.PacketFactory;
-import udt.util.MeanValue;
 import udt.util.UDTThreadFactory;
 
 /**
@@ -203,6 +202,7 @@ public class UDPEndPoint {
 	}
 
 	public void addSession(Long destinationID,UDTSession session){
+		logger.info("Storing session <"+destinationID+">");
 		sessions.put(destinationID, session);
 	}
 
@@ -248,16 +248,20 @@ public class UDPEndPoint {
 	private long lastDestID=-1;
 	private UDTSession lastSession;
 	
-	MeanValue v=new MeanValue("receiver processing ",true, 256);
+	//MeanValue v=new MeanValue("receiver processing ",true, 256);
+	
+	private final Object lock=new Object();
 	
 	protected void doReceive()throws IOException{
 		while(!stopped){
 			try{
 				try{
-					v.end();
+					//v.end();
+					
 					//will block until a packet is received or timeout has expired
 					dgSocket.receive(dp);
-					v.begin();
+					
+					//v.begin();
 					
 					Destination peer=new Destination(dp.getAddress(), dp.getPort());
 					int l=dp.getLength();
@@ -266,19 +270,21 @@ public class UDPEndPoint {
 
 					//handle connection handshake 
 					if(packet.isConnectionHandshake()){
-						UDTSession session=clientSessions.get(peer);
-						if(session==null){
-							session=new ServerSession(dp,this);
-							addSession(session.getSocketID(),session);
-							//TODO need to check peer to avoid duplicate server session
-							if(serverSocketMode){
-								logger.fine("Pooling new request.");
-								sessionHandoff.put(session);
-								logger.fine("Request taken for processing.");
+						synchronized(lock){
+							UDTSession session=clientSessions.get(peer);
+							if(session==null){
+								session=new ServerSession(dp,this);
+								addSession(session.getSocketID(),session);
+								//TODO need to check peer to avoid duplicate server session
+								if(serverSocketMode){
+									logger.fine("Pooling new request.");
+									sessionHandoff.put(session);
+									logger.fine("Request taken for processing.");
+								}
 							}
+							peer.setSocketID(((ConnectionHandshake)packet).getSocketID());
+							session.received(packet,peer);
 						}
-						peer.setSocketID(((ConnectionHandshake)packet).getSocketID());
-						session.received(packet,peer);
 					}
 					else{
 						//dispatch to existing session

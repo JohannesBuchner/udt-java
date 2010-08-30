@@ -64,8 +64,7 @@ public class PacketFactory {
 		ControlPacket packet=null;
 		
 		int pktType=PacketUtil.decodeType(encodedData, 0);
-		long  ackSeqNo =PacketUtil.decodeAckSeqNr(encodedData, 0); 
-		long  msgNr = PacketUtil.decode(encodedData, 4);
+		long  additionalInfo = PacketUtil.decode(encodedData, 4); 
 		long  timeStamp = PacketUtil.decode(encodedData,8) ;
 		long  destID = PacketUtil.decode(encodedData,12);
 		byte[] controlInformation = new byte[length-16];
@@ -81,7 +80,7 @@ public class PacketFactory {
 		}
 		//TYPE 0010:2
 		else if(ControlPacketType.ACK.ordinal()==pktType){
-			packet=new Acknowledgement(controlInformation);
+			packet=new Acknowledgement(additionalInfo,controlInformation);
 		}
 		//TYPE 0011:3
 		else if(ControlPacketType.NAK.ordinal()==pktType){
@@ -93,7 +92,7 @@ public class PacketFactory {
 		}
 		//TYPE 0110:6
 		else if(ControlPacketType.ACK2.ordinal()==pktType){
-			packet=new Acknowledgment2(controlInformation);
+			packet=new Acknowledgment2(additionalInfo,controlInformation);
 		}
 		//TYPE 0111:7
 		else if(ControlPacketType.MESSAGE_DROP_REQUEST.ordinal()==pktType){
@@ -105,8 +104,6 @@ public class PacketFactory {
 		}
 		
 		if(packet!=null){
-			packet.setAckSequenceNumber(ackSeqNo);
-			packet.setMessageNumber(msgNr);
 			packet.setTimeStamp(timeStamp);
 			packet.setDestinationID(destID);
 		}

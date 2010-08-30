@@ -41,10 +41,13 @@ import udt.UDTSender;
  * receipt of packets
  */
 public class Acknowledgement extends ControlPacket {
-	
+
+	//the ack sequence number
+	private long ackSequenceNumber ;
+
 	//the packet sequence number to which all the previous packets have been received (excluding)
 	private long ackNumber ;
-	
+
 	//round-trip time in microseconds(RTT)
 	private long roundTripTime;
 	// RTT variance
@@ -55,13 +58,14 @@ public class Acknowledgement extends ControlPacket {
 	private long pktArrivalSpeed;
 	//estimated link capacity in number of packets per second
 	private long estimatedLinkCapacity;
-	
+
 	public Acknowledgement(){
 		this.controlPacketType=ControlPacketType.ACK.ordinal();
 	}
-	
-	public Acknowledgement(byte[] controlInformation){
+
+	public Acknowledgement(long ackSeqNo, byte[] controlInformation){
 		this();
+		this.ackSequenceNumber=ackSeqNo;
 		decodeControlInformation(controlInformation);
 	}
 
@@ -70,9 +74,24 @@ public class Acknowledgement extends ControlPacket {
 		roundTripTime =PacketUtil.decode(data, 4);
 		roundTripTimeVariance = PacketUtil.decode(data, 8);
 		bufferSize = PacketUtil.decode(data, 12);
-		pktArrivalSpeed = PacketUtil.decode(data, 16);
-		estimatedLinkCapacity = PacketUtil.decode(data, 20);
+		if(data.length>16){
+			pktArrivalSpeed = PacketUtil.decode(data, 16);
+			estimatedLinkCapacity = PacketUtil.decode(data, 20);
+		}
 	}
+
+	@Override
+	protected long getAdditionalInfo(){
+		return ackSequenceNumber;
+	}
+
+	public long getAckSequenceNumber() {
+		return ackSequenceNumber;
+	}
+	public void setAckSequenceNumber(long ackSequenceNumber) {
+		this.ackSequenceNumber = ackSequenceNumber;
+	}
+
 
 	/**
 	 * get the ack number (the number up to which all packets have been received (excluding))
@@ -81,15 +100,15 @@ public class Acknowledgement extends ControlPacket {
 	public long getAckNumber() {
 		return ackNumber;
 	}
-	
+
 	/**
 	 * set the ack number (the number up to which all packets have been received (excluding))
-	 * @param nexttoPrevPktSeqNO
+	 * @param ackNumber
 	 */
-	public void setNexttoPrevPktSeqNO(long nexttoPrevPktSeqNO) {
-		ackNumber = nexttoPrevPktSeqNO;
+	public void setAckNumber(long ackNumber) {
+		this.ackNumber = ackNumber;
 	}
-	
+
 	/**
 	 * get the round trip time (microseconds)
 	 * @return
@@ -104,7 +123,7 @@ public class Acknowledgement extends ControlPacket {
 	public void setRoundTripTime(long RoundTripTime) {
 		roundTripTime = RoundTripTime;
 	}
-	
+
 	/**
 	 * set the variance of the round trip time (in microseconds)
 	 * @param RoundTripTime
@@ -112,35 +131,35 @@ public class Acknowledgement extends ControlPacket {
 	public void setRoundTripTimeVar(long roundTripTimeVar) {
 		roundTripTimeVariance = roundTripTimeVar;
 	}
-	
+
 	public long getRoundTripTimeVar() {
 		return roundTripTimeVariance;
 	}
-	
+
 	public long getBufferSize() {
 		return bufferSize;
 	}
-	
+
 	public void setBufferSize(long bufferSiZe) {
 		this.bufferSize = bufferSiZe;
 	}
-	
+
 	public long getPacketReceiveRate() {
 		return pktArrivalSpeed;
 	}
 	public void setPacketReceiveRate(long packetReceiveRate) {
 		this.pktArrivalSpeed = packetReceiveRate;
 	}
-	
-	
+
+
 	public long getEstimatedLinkCapacity() {
 		return estimatedLinkCapacity;
 	}
-	
+
 	public void setEstimatedLinkCapacity(long estimatedLinkCapacity) {
 		this.estimatedLinkCapacity = estimatedLinkCapacity;
 	}
-	
+
 	@Override
 	public byte[] encodeControlInformation(){
 		try {
@@ -151,16 +170,16 @@ public class Acknowledgement extends ControlPacket {
 			bos.write(PacketUtil.encode(bufferSize));
 			bos.write(PacketUtil.encode(pktArrivalSpeed));
 			bos.write(PacketUtil.encode(estimatedLinkCapacity));
-			
+
 			return bos.toByteArray();
 		} catch (Exception e) {
 			// can't happen
 			return null;
 		}
-		
+
 	}
 
-	
+
 
 	@Override
 	public boolean equals(Object obj) {
@@ -185,9 +204,9 @@ public class Acknowledgement extends ControlPacket {
 			return false;
 		return true;
 	}
-	
-	
-	
-	
+
+
+
+
 
 }

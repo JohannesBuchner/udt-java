@@ -8,7 +8,6 @@ public class TestControlPacket extends TestCase {
 
 	public void testSequenceNumber1(){
 		ControlPacket p=new DummyControlPacket();
-		p.setAckSequenceNumber(1);
 		byte[]x=p.getHeader();
 		byte highest=x[0];
 		//check highest bit is "1" for ControlPacket

@@ -42,9 +42,6 @@ public abstract class ControlPacket implements UDTPacket{
 	
 	protected int controlPacketType;
 
-	//used for ACK and ACK2
-	protected long ackSequenceNumber;
-	
 	protected long messageNumber;
 	
 	protected long timeStamp;
@@ -63,14 +60,6 @@ public abstract class ControlPacket implements UDTPacket{
 		return controlPacketType;
 	}
 	
-	public long getAckSequenceNumber() {
-		return ackSequenceNumber;
-	}
-	 public void setAckSequenceNumber(long ackSequenceNumber) {
-		this.ackSequenceNumber = ackSequenceNumber;
-	}
-
-
 	public long getMessageNumber() {
 		return messageNumber;
 	}
@@ -105,8 +94,8 @@ public abstract class ControlPacket implements UDTPacket{
 //		//sequence number with highest bit set to "0"
 		try{
 			ByteArrayOutputStream bos=new ByteArrayOutputStream(16);
-			bos.write(PacketUtil.encodeHighesBitTypeAndSeqNumber(true, controlPacketType, ackSequenceNumber));
-			bos.write(PacketUtil.encode(messageNumber));
+			bos.write(PacketUtil.encodeControlPacketType(controlPacketType));
+			bos.write(PacketUtil.encode(getAdditionalInfo()));
 			bos.write(PacketUtil.encode(timeStamp));
 			bos.write(PacketUtil.encode(destinationID));
 			return bos.toByteArray();
@@ -114,6 +103,14 @@ public abstract class ControlPacket implements UDTPacket{
 			return null;
 		}
 	}
+
+	/**
+	 * this method gets the "additional info" for this type of control packet
+	 */
+	protected long getAdditionalInfo(){
+		return 0L;
+	}
+
 	
 	/**
 	 * this method builds the control information
@@ -149,15 +146,9 @@ public abstract class ControlPacket implements UDTPacket{
 		if (getClass() != obj.getClass())
 			return false;
 		ControlPacket other = (ControlPacket) obj;
-		if (ackSequenceNumber != other.ackSequenceNumber)
-			return false;
 		if (controlPacketType != other.controlPacketType)
 			return false;
-		//if (!Arrays.equals(controlInformation, other.controlInformation))
-		//	return false;
 		if (destinationID != other.destinationID)
-			return false;
-		if (messageNumber != other.messageNumber)
 			return false;
 		if (timeStamp != other.timeStamp)
 			return false;

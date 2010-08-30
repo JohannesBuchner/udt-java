@@ -35,7 +35,6 @@ package udt.util;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.net.InetAddress;
-import java.nio.ByteBuffer;
 import java.text.NumberFormat;
 
 import udt.UDTClient;
@@ -78,28 +77,28 @@ public class ReceiveFile extends Application{
 			UDTInputStream in=client.getInputStream();
 			UDTOutputStream out=client.getOutputStream();
 			
-			byte[]readBuf=new byte[1024];
-			ByteBuffer bb=ByteBuffer.wrap(readBuf);
 			System.out.println("[ReceiveFile] Requesting file "+remoteFile);
 			//send name file info
 			byte[]fName=remoteFile.getBytes();
-			bb.putInt(fName.length+1);
 			
-			bb.put(fName);
-			bb.put((byte)0);
+			out.write(encode(fName.length));
+			out.write(fName);
 			
-			out.write(readBuf, 0, bb.position());
 			out.flush();
 			
 			//pause the sender to save some CPU time
 			out.pauseOutput();
 			
 			//read size info (an 4-byte int) 
-			byte[]sizeInfo=new byte[4];
+			byte[]sizeInfo=new byte[8];
 			
-			while(in.read(sizeInfo)==0);
-			
-			long size=ByteBuffer.wrap(sizeInfo).getInt();
+			int total=0;
+			while(total<sizeInfo.length){
+				int r=in.read(sizeInfo);
+				if(r<0)break;
+				total+=r;
+			}
+			long size=decode(sizeInfo, 0);
 			
 			File file=new File(new String(localFile));
 			System.out.println("[ReceiveFile] Write to local file <"+file.getAbsolutePath()+">");
