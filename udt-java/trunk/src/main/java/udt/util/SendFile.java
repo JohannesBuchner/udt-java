@@ -168,8 +168,7 @@ public class SendFile extends Application{
 					long size=file.length();
 					System.out.println("[SendFile] File size: "+size);
 					//send size info
-					out.write(encode(size));
-					out.write(encode(0l));
+					out.write(encode64(size));
 					out.flush();
 					
 					long start=System.currentTimeMillis();
@@ -180,6 +179,7 @@ public class SendFile extends Application{
 						fis=new FileInputStream(file);
 						Util.copy(fis, out, size, false);
 					}
+					System.out.println("[SendFile] Finished sending data.");
 					long end=System.currentTimeMillis();
 					System.out.println(socket.getSession().getStatistics().toString());
 					double rate=1000.0*size/1024/1024/(end-start);

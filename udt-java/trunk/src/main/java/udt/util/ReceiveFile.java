@@ -69,6 +69,7 @@ public class ReceiveFile extends Application{
 	
 	public void run(){
 		configure();
+		verbose=true;
 		try{
 			UDTReceiver.connectionExpiryDisabled=true;
 			InetAddress myHost=localIP!=null?InetAddress.getByName(localIP):InetAddress.getLocalHost();
@@ -78,12 +79,14 @@ public class ReceiveFile extends Application{
 			UDTOutputStream out=client.getOutputStream();
 			
 			System.out.println("[ReceiveFile] Requesting file "+remoteFile);
-			//send name file info
 			byte[]fName=remoteFile.getBytes();
 			
-			out.write(encode(fName.length));
-			out.write(fName);
+			//send file name info
+			byte[]nameinfo=new byte[fName.length+4];
+			System.arraycopy(encode(fName.length), 0, nameinfo, 0, 4);
+			System.arraycopy(fName, 0, nameinfo, 4, fName.length);
 			
+			out.write(nameinfo);
 			out.flush();
 			
 			//pause the sender to save some CPU time
@@ -99,7 +102,14 @@ public class ReceiveFile extends Application{
 				total+=r;
 			}
 			long size=decode(sizeInfo, 0);
-			
+			if(verbose){
+				StringBuilder sb=new StringBuilder();
+				for(int i=0;i<sizeInfo.length;i++){
+					sb.append(Integer.toString(sizeInfo[i]));
+					sb.append(" ");
+				}
+				System.out.println("[ReceiveFile] Size info: "+sb.toString());
+			}
 			File file=new File(new String(localFile));
 			System.out.println("[ReceiveFile] Write to local file <"+file.getAbsolutePath()+">");
 			FileOutputStream fos=new FileOutputStream(file);

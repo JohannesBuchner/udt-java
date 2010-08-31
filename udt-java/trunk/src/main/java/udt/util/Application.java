@@ -70,4 +70,11 @@ public abstract class Application implements Runnable {
 		return new byte[]{m1,m2,m3,m4};
 	}
 	
+	static byte[]encode64(long value){
+		byte m4= (byte) (value>>24 );
+		byte m3=(byte)(value>>16);
+		byte m2=(byte)(value>>8);
+		byte m1=(byte)(value);
+		return new byte[]{m1,m2,m3,m4,0,0,0,0};
+	}
 }
