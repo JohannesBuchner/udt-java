@@ -136,7 +136,7 @@ public class Util {
 			read+=c;
 			target.write(buf, 0, c);
 			if(flush)target.flush();
-			if(size>0 && read>=size)break;
+			if(read>=size && size>-1)break;
 		}
 		if(!flush)target.flush();
 	}

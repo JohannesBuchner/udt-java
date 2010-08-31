@@ -82,7 +82,7 @@ public class UDPEndPoint {
 	//has the endpoint been stopped?
 	private volatile boolean stopped=false;
 
-	public static final int DATAGRAM_SIZE=1500;
+	public static final int DATAGRAM_SIZE=1200;
 
 	/**
 	 * create an endpoint on the given socket
