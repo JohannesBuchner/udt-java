@@ -40,18 +40,24 @@ public class ConnectionHandshake extends ControlPacket {
 	private long udtVersion=4;
 	
 	public static final long SOCKET_TYPE_STREAM=0;
+	
 	public static final long SOCKET_TYPE_DGRAM=1;
-	private long socketType= SOCKET_TYPE_STREAM;//STREAM OR DGRAM
+	
+	private long socketType= SOCKET_TYPE_DGRAM; //stream or dgram
 	
 	private long initialSeqNo = 0;
 	private long packetSize;
 	private long maxFlowWndSize;
 	
-	public static final long CONNECTION_TYPE_REGULAR=0;
-	public static final long CONNECTION_TYPE_RENDEZVOUS=1;
-	private long connectionType = 0;//regular or rendezvous mode
+	public static final long CONNECTION_TYPE_REGULAR=1;
+	
+	public static final long CONNECTION_TYPE_RENDEZVOUS=0;
+	
+	private long connectionType = CONNECTION_TYPE_REGULAR;//regular or rendezvous mode
 	
 	private long socketID;
+	
+	private long cookie=0;
 	
 	public ConnectionHandshake(){
 		this.controlPacketType=ControlPacketType.CONNECTION_HANDSHAKE.ordinal();
@@ -75,6 +81,9 @@ public class ConnectionHandshake extends ControlPacket {
 		maxFlowWndSize=PacketUtil.decode(data, 16);
 		connectionType=PacketUtil.decode(data, 20);
 		socketID=PacketUtil.decode(data, 24);
+		if(data.length>28){
+			cookie=PacketUtil.decode(data, 28);
+		}
 	}
 
 	public long getUdtVersion() {
@@ -176,16 +185,19 @@ public class ConnectionHandshake extends ControlPacket {
 	public String toString(){
 		StringBuilder sb=new StringBuilder();
 		sb.append("ConnectionHandshake [");
+		sb.append("connectionType=").append(connectionType);
 		UDTSession session=getSession();
 		if(session!=null){
-			sb.append(session.getDestination());
 			sb.append(", ");
+			sb.append(session.getDestination());
 		}
-		sb.append("mySocketID=").append(socketID);
+		sb.append(", mySocketID=").append(socketID);
 		sb.append(", initialSeqNo=").append(initialSeqNo);
 		sb.append(", packetSize=").append(packetSize);
 		sb.append(", maxFlowWndSize=").append(maxFlowWndSize);
+		sb.append(", socketType=").append(socketType);
 		sb.append(", destSocketID=").append(destinationID);
+		if(cookie>0)sb.append(", cookie=").append(cookie);
 		sb.append("]");
 		return sb.toString();
 	}

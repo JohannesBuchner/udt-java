@@ -43,18 +43,15 @@ import udt.packets.Shutdown;
 import udt.util.SequenceNumber;
 
 /**
- * Keep state of a UDT connection. Once established, the 
- * session provides a valid {@link UDTSocket}.
- * This can be used as client session in both client-server mode and rendezvous mode.
- * 
- * 
+ * Client side of a client-server UDT connection. 
+ * Once established, the session provides a valid {@link UDTSocket}.
  */
 public class ClientSession extends UDTSession {
 
 	private static final Logger logger=Logger.getLogger(ClientSession.class.getName());
 
 	private UDPEndPoint endPoint;
-	
+
 	public ClientSession(UDPEndPoint endPoint, Destination dest)throws SocketException{
 		super("ClientSession localPort="+endPoint.getLocalPort(),dest);
 		this.endPoint=endPoint;
@@ -67,11 +64,11 @@ public class ClientSession extends UDTSession {
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	
+
 	public void connect() throws InterruptedException,IOException{
 		int n=0;
-		sendHandShake();
 		while(getState()!=ready){
+			sendHandShake();
 			if(getState()==invalid)throw new IOException("Can't connect!");
 			n++;
 			if(getState()!=ready)Thread.sleep(500);
@@ -79,28 +76,48 @@ public class ClientSession extends UDTSession {
 		cc.init();
 		logger.info("Connected, "+n+" handshake packets sent");		
 	}
-	
+
 	@Override
 	public void received(UDTPacket packet, Destination peer) {
-		
+
 		lastPacket=packet;
-		
-		if (getState()!=ready && packet instanceof ConnectionHandshake) {
-			try{
-				logger.info("Received connection handshake from "+peer);
-				//TODO validate parameters sent by peer
-				setState(ready);
-				long peerSocketID=((ConnectionHandshake)packet).getSocketID();
-				destination.setSocketID(peerSocketID);
-				socket=new UDTSocket(endPoint,this);
-			}catch(Exception ex){
-				logger.log(Level.WARNING,"Error creating socket",ex);
-				setState(invalid);
+
+		if (packet instanceof ConnectionHandshake) {
+			ConnectionHandshake hs=(ConnectionHandshake)packet;
+
+			logger.info("Received connection handshake from "+peer+"\n"+hs);
+
+			if (getState()!=ready) {
+				if(hs.getConnectionType()==1){
+					try{
+						//TODO validate parameters sent by peer
+						long peerSocketID=hs.getSocketID();
+						destination.setSocketID(peerSocketID);
+						sendConfirmation(hs);
+					}catch(Exception ex){
+						logger.log(Level.WARNING,"Error creating socket",ex);
+						setState(invalid);
+					}
+					return;
+				}
+				else{
+					try{
+						//TODO validate parameters sent by peer
+						long peerSocketID=hs.getSocketID();
+						destination.setSocketID(peerSocketID);
+						setState(ready);
+						socket=new UDTSocket(endPoint,this);		
+					}catch(Exception ex){
+						logger.log(Level.WARNING,"Error creating socket",ex);
+						setState(invalid);
+					}
+					return;
+				}
 			}
-			return;
 		}
+
 		if(getState() == ready) {
-			
+
 			if(packet instanceof Shutdown){
 				setState(shutdown);
 				active=false;
@@ -120,26 +137,40 @@ public class ClientSession extends UDTSession {
 				setState(invalid);
 			}
 			return;
-		 }
+		}
 	}
 
 
 	//handshake for connect
 	protected void sendHandShake()throws IOException{
 		ConnectionHandshake handshake = new ConnectionHandshake();
-		handshake.setConnectionType(1);
-		handshake.setSocketType(1);
+		handshake.setConnectionType(ConnectionHandshake.CONNECTION_TYPE_REGULAR);
+		handshake.setSocketType(ConnectionHandshake.SOCKET_TYPE_DGRAM);
 		long initialSequenceNo=SequenceNumber.random();
 		setInitialSequenceNumber(initialSequenceNo);
 		handshake.setInitialSeqNo(initialSequenceNo);
 		handshake.setPacketSize(getDatagramSize());
 		handshake.setSocketID(mySocketID);
+		handshake.setMaxFlowWndSize(flowWindowSize);
 		handshake.setSession(this);
 		logger.info("Sending "+handshake);
 		endPoint.doSend(handshake);
 	}
-	
-	
+
+	//2nd handshake for connect
+	protected void sendConfirmation(ConnectionHandshake hs)throws IOException{
+		ConnectionHandshake handshake = new ConnectionHandshake();
+		handshake.setConnectionType(-1);
+		handshake.setSocketType(ConnectionHandshake.SOCKET_TYPE_DGRAM);
+		handshake.setInitialSeqNo(hs.getInitialSeqNo());
+		handshake.setPacketSize(hs.getPacketSize());
+		handshake.setSocketID(mySocketID);
+		handshake.setMaxFlowWndSize(flowWindowSize);
+		handshake.setSession(this);
+		logger.info("Sending confirmation "+handshake);
+		endPoint.doSend(handshake);
+	}
+
 
 	public UDTPacket getLastPkt(){
 		return lastPacket;

@@ -88,11 +88,10 @@ public class ReceiveFile extends Application{
 			
 			out.write(nameinfo);
 			out.flush();
-			
 			//pause the sender to save some CPU time
 			out.pauseOutput();
 			
-			//read size info (an 4-byte int) 
+			//read size info (an 64 bit number) 
 			byte[]sizeInfo=new byte[8];
 			
 			int total=0;

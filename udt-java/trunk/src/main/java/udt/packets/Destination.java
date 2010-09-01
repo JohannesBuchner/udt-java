@@ -65,8 +65,8 @@ public class Destination {
 	}
 
 	public String toString(){
-		return("Destination: "+address.getHostName()+" port="+port+" socketID="+socketID);
-	}
+		return("Destination ["+address.getHostName()+" port="+port+" socketID="+socketID)+"]";
+	} 
 
 	@Override
 	public int hashCode() {

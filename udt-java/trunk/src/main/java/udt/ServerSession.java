@@ -67,33 +67,37 @@ public class ServerSession extends UDTSession {
 	@Override
 	public void received(UDTPacket packet, Destination peer){
 		lastPacket=packet;
-		if (getState()<=ready && packet instanceof ConnectionHandshake) {
+
+		if(packet instanceof ConnectionHandshake) {
 			ConnectionHandshake connectionHandshake=(ConnectionHandshake)packet;
-			destination.setSocketID(connectionHandshake.getSocketID());
-			
 			logger.info("Received "+connectionHandshake);
-			
-			if(getState()<=handshaking){
-				setState(handshaking);
-			}
-			try{
-				handleHandShake(connectionHandshake);
-				n_handshake++;
+
+			if (getState()<=ready){
+				destination.setSocketID(connectionHandshake.getSocketID());
+
+				if(getState()<=handshaking){
+					setState(handshaking);
+				}
 				try{
-					setState(ready);
-					socket=new UDTSocket(endPoint, this);
-					cc.init();
-				}catch(Exception uhe){
-					//session is invalid
-					logger.log(Level.SEVERE,"",uhe);
+					handleHandShake(connectionHandshake);
+					n_handshake++;
+					try{
+						setState(ready);
+						socket=new UDTSocket(endPoint, this);
+						cc.init();
+					}catch(Exception uhe){
+						//session is invalid
+						logger.log(Level.SEVERE,"",uhe);
+						setState(invalid);
+					}
+				}catch(IOException ex){
+					//session invalid
+					logger.log(Level.WARNING,"Error processing ConnectionHandshake",ex);
 					setState(invalid);
 				}
-			}catch(IOException ex){
-				//session invalid
-				logger.log(Level.WARNING,"Error processing ConnectionHandshake",ex);
-				setState(invalid);
+				return;
 			}
-			return;
+
 		}else if(packet instanceof KeepAlive) {
 			socket.getReceiver().resetEXPTimer();
 			active = true;

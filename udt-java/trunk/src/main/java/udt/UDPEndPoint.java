@@ -67,9 +67,6 @@ public class UDPEndPoint {
 	//active sessions keyed by socket ID
 	private final Map<Long,UDTSession>sessions=new ConcurrentHashMap<Long, UDTSession>();
 
-	//connecting sessions keyed by peer destination
-	private final Map<Destination,UDTSession>clientSessions=new ConcurrentHashMap<Destination, UDTSession>();;
-
 	//last received packet
 	private UDTPacket lastPacket;
 
@@ -82,7 +79,7 @@ public class UDPEndPoint {
 	//has the endpoint been stopped?
 	private volatile boolean stopped=false;
 
-	public static final int DATAGRAM_SIZE=1200;
+	public static final int DATAGRAM_SIZE=1400;
 
 	/**
 	 * create an endpoint on the given socket
@@ -206,14 +203,6 @@ public class UDPEndPoint {
 		sessions.put(destinationID, session);
 	}
 
-	public void addClientSession(Destination peer,UDTSession session){
-		clientSessions.put(peer, session);
-	}
-
-	public void removeClientSession(Destination peer){
-		clientSessions.remove(peer);
-	}
-
 	public UDTSession getSession(Long destinationID){
 		return sessions.get(destinationID);
 	}
@@ -250,6 +239,8 @@ public class UDPEndPoint {
 	
 	//MeanValue v=new MeanValue("receiver processing ",true, 256);
 	
+	private int n=0;
+	
 	private final Object lock=new Object();
 	
 	protected void doReceive()throws IOException{
@@ -271,7 +262,8 @@ public class UDPEndPoint {
 					//handle connection handshake 
 					if(packet.isConnectionHandshake()){
 						synchronized(lock){
-							UDTSession session=clientSessions.get(peer);
+							Long id=Long.valueOf(packet.getDestinationID());
+							UDTSession session=sessions.get(id);
 							if(session==null){
 								session=new ServerSession(dp,this);
 								addSession(session.getSocketID(),session);
@@ -299,7 +291,10 @@ public class UDPEndPoint {
 							lastDestID=dest;
 						}
 						if(session==null){
-							logger.warning("Unknown session <"+packet.getDestinationID()+"> requested from <"+peer+"> packet type "+packet.getClass().getName());
+							n++;
+							if(n%100==1){
+								logger.warning("Unknown session <"+dest+"> requested from <"+peer+"> packet type "+packet.getClass().getName());
+							}
 						}
 						else{
 							session.received(packet,peer);
