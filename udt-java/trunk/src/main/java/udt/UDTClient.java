@@ -78,7 +78,6 @@ public class UDTClient {
 		Destination destination=new Destination(address,port);
 		//create client session...
 		clientSession=new ClientSession(clientEndpoint,destination);
-		clientEndpoint.addClientSession(destination, clientSession);
 		clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
 
 		clientEndpoint.start();

@@ -33,6 +33,7 @@
 package udt;
 
 import java.net.DatagramPacket;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -73,7 +74,7 @@ public abstract class UDTSession {
 	 * flow window size, i.e. how many data packets are
 	 * in-flight at a single time
 	 */
-	protected int flowWindowSize=4*128;
+	protected int flowWindowSize=8192;//4*128;
 
 	/**
 	 * remote UDT entity (address and socket ID)
@@ -104,7 +105,7 @@ public abstract class UDTSession {
 	
 	protected final long mySocketID;
 	
-	private final static AtomicLong nextSocketID=new AtomicLong(0);
+	private final static AtomicLong nextSocketID=new AtomicLong(20+new Random().nextInt(5000));
 	
 	public UDTSession(String description, Destination destination){
 		statistics=new UDTStatistics(description);
@@ -220,4 +221,14 @@ public abstract class UDTSession {
 	public DatagramPacket getDatagram(){
 		return dgPacket;
 	}
+	
+	public String toString(){
+		StringBuilder sb=new StringBuilder();
+		sb.append(super.toString());
+		sb.append(" [");
+		sb.append("socketID=").append(this.mySocketID);
+		sb.append(" ]");
+		return sb.toString();
+	}
+	
 }

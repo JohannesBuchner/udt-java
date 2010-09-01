@@ -72,9 +72,9 @@ public class Acknowledgement extends ControlPacket {
 	void decodeControlInformation(byte[] data){
 		ackNumber=PacketUtil.decode(data, 0);
 		if(data.length>4){
-		roundTripTime =PacketUtil.decode(data, 4);
-		roundTripTimeVariance = PacketUtil.decode(data, 8);
-		bufferSize = PacketUtil.decode(data, 12);
+			roundTripTime =PacketUtil.decode(data, 4);
+			roundTripTimeVariance = PacketUtil.decode(data, 8);
+			bufferSize = PacketUtil.decode(data, 12);
 		}
 		if(data.length>16){
 			pktArrivalSpeed = PacketUtil.decode(data, 16);
