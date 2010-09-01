@@ -61,7 +61,7 @@ public class UDTInputStream extends InputStream {
 
 	//the highest sequence number read by the application, initialised
 	//to the initial sequence number minus one
-	private volatile long highestSequenceNumber;
+	private volatile long highestSequenceNumber=0;
 
 	//set to 'false' by the receiver when it gets a shutdown signal from the peer
 	//see the noMoreData() method
@@ -82,7 +82,9 @@ public class UDTInputStream extends InputStream {
 		this.statistics=statistics;
 		int capacity=socket!=null? 4*socket.getSession().getFlowWindowSize() : 64 ;
 		appData=new PriorityBlockingQueue<AppData>(capacity);
-		highestSequenceNumber=SequenceNumber.decrement(socket.getSession().getInitialSequenceNumber());
+		if(socket!=null){
+			highestSequenceNumber=SequenceNumber.decrement(socket.getSession().getInitialSequenceNumber());
+		}
 	}
 
 	/**
