@@ -36,26 +36,20 @@ public interface UDTPacket extends Comparable<UDTPacket>{
 
 
 	public long getMessageNumber();
+	
 	public void setMessageNumber(long messageNumber) ;
 	
-	
 	public void setTimeStamp(long timeStamp);
+	
 	public long getTimeStamp();
 	
-
 	public void setDestinationID(long destinationID);
+	
 	public long getDestinationID();
 	
 	public boolean isControlPacket();
 	
 	public int getControlPacketType();
-	
-	/**
-	 * header
-	 * @return
-	 */
-
-	public byte[] getHeader();
 
 	public byte[] getEncoded();
 	

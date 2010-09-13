@@ -32,9 +32,6 @@
 
 package udt.packets;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 import udt.UDTPacket;
 import udt.UDTSession;
 
@@ -89,19 +86,13 @@ public abstract class ControlPacket implements UDTPacket{
 	 * return the header according to specification p.5
 	 * @return
 	 */
-	//TODO order?!?!?
-	public byte[] getHeader(){
-//		//sequence number with highest bit set to "0"
-		try{
-			ByteArrayOutputStream bos=new ByteArrayOutputStream(16);
-			bos.write(PacketUtil.encodeControlPacketType(controlPacketType));
-			bos.write(PacketUtil.encode(getAdditionalInfo()));
-			bos.write(PacketUtil.encode(timeStamp));
-			bos.write(PacketUtil.encode(destinationID));
-			return bos.toByteArray();
-		}catch(IOException ioe){/*can't happen*/
-			return null;
-		}
+	byte[] getHeader(){
+		byte[]res=new byte[16];
+		System.arraycopy(PacketUtil.encodeControlPacketType(controlPacketType), 0, res, 0, 4);
+		System.arraycopy(PacketUtil.encode(getAdditionalInfo()), 0, res, 4, 4);
+		System.arraycopy(PacketUtil.encode(timeStamp), 0, res, 8, 4);
+		System.arraycopy(PacketUtil.encode(destinationID), 0, res, 12, 4);
+		return res;
 	}
 
 	/**

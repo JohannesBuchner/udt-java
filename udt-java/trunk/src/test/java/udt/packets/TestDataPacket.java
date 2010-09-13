@@ -1,4 +1,4 @@
-package udt;
+package udt.packets;
 
 import junit.framework.TestCase;
 import udt.packets.DataPacket;
@@ -8,7 +8,8 @@ public class TestDataPacket extends TestCase {
 	public void testSequenceNumber1(){
 		DataPacket p=new DataPacket();
 		p.setPacketSequenceNumber(1);
-		byte[]x=p.getHeader();
+		p.setData(new byte[0]);
+		byte[]x=p.getEncoded();
 		byte highest=x[0];
 		//check highest bit is "0" for DataPacket
 		assertEquals(0, highest & 128);
@@ -22,10 +23,8 @@ public class TestDataPacket extends TestCase {
 		byte[] data="test".getBytes();
 		p.setData(data);
 		byte[]encoded=p.getEncoded();
-		int headerLength=p.getHeader().length;
-		assertEquals(data.length+headerLength,encoded.length);
 		byte[]encData=new byte[data.length];
-		System.arraycopy(encoded, headerLength, encData, 0, data.length);
+		System.arraycopy(encoded, 16, encData, 0, data.length);
 		String s=new String(encData);
 		assertEquals("test", s);
 		System.out.println("String s = " + s);
@@ -43,7 +42,7 @@ public class TestDataPacket extends TestCase {
 		//get the encoded data
 		byte[]encodedData=testPacket1.getEncoded();
 
-		int headerLength=testPacket1.getHeader().length;
+		int headerLength=16;
 		assertEquals(data1.length+headerLength,encodedData.length);
 
 		byte[]payload=new byte[data1.length];

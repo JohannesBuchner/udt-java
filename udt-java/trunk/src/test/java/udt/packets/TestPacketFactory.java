@@ -1,9 +1,10 @@
-package udt;
+package udt.packets;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import junit.framework.TestCase;
+import udt.UDTPacket;
 import udt.packets.Acknowledgement;
 import udt.packets.Acknowledgment2;
 import udt.packets.ConnectionHandshake;

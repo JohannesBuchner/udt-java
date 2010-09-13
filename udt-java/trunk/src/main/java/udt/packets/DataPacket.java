@@ -32,9 +32,6 @@
 
 package udt.packets;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 import udt.UDTPacket;
 import udt.UDTSession;
 
@@ -115,8 +112,6 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 		return this.timeStamp;
 	}
 
-
-
 	public void setDestinationID(long destinationID) {
 		this.destinationID=destinationID;
 	}
@@ -125,36 +120,16 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 		this.timeStamp=timeStamp;
 	}
 
-
-
-	/**
-	 * return the header according to specification p.5
-	 * @return
-	 */
-	//TODO order?
-	public byte[] getHeader(){
-		//sequence number with highest bit set to "0"
-		try{
-			ByteArrayOutputStream bos=new ByteArrayOutputStream(16);
-			bos.write(PacketUtil.encode(packetSequenceNumber));
-			bos.write(PacketUtil.encode(messageNumber));
-			bos.write(PacketUtil.encode(timeStamp));
-			bos.write(PacketUtil.encode(destinationID));
-			return bos.toByteArray();
-
-		}catch(IOException ioe){/*can't happen*/
-			return null;
-		}
-	}
-
 	/**
 	 * complete header+data packet for transmission
 	 */
 	public byte[] getEncoded(){
-		byte[] header=getHeader();
 		//header.length is 16
 		byte[] result=new byte[16+data.length];
-		System.arraycopy(header, 0, result, 0, 16);
+		System.arraycopy(PacketUtil.encode(packetSequenceNumber), 0, result, 0, 4);
+		System.arraycopy(PacketUtil.encode(messageNumber), 0, result, 4, 4);
+		System.arraycopy(PacketUtil.encode(timeStamp), 0, result, 8, 4);
+		System.arraycopy(PacketUtil.encode(destinationID), 0, result, 12, 4);
 		System.arraycopy(data, 0, result, 16, data.length);
 		return result;
 	}
