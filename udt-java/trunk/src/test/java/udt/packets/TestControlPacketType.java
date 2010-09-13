@@ -1,4 +1,4 @@
-package udt;
+package udt.packets;
 
 import udt.packets.ControlPacket;
 import udt.packets.ControlPacket.ControlPacketType;
