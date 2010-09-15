@@ -1,15 +1,17 @@
 package udt;
 
 import java.security.MessageDigest;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 
-import udt.util.UDTStatistics;
 import udt.util.Util;
 
 public class TestUDTInputStream extends UDTTestBase{
 
 	public void test1()throws Exception{
-		UDTStatistics stat=new UDTStatistics("test");
-		UDTInputStream is=new UDTInputStream(null, stat);
+		UDTInputStream is=new UDTInputStream(null);
 		byte[] data1="this is ".getBytes();
 		byte[] data2="a test".getBytes();
 		byte[] data3=" string".getBytes();
@@ -24,8 +26,7 @@ public class TestUDTInputStream extends UDTTestBase{
 	}
 	
 	public void test2()throws Exception{
-		UDTStatistics stat=new UDTStatistics("test");
-		UDTInputStream is=new UDTInputStream(null, stat);
+		UDTInputStream is=new UDTInputStream(null);
 		byte[] data1=getRandomData(65537);
 		byte[] data2=getRandomData(1234);
 		byte[] data3=getRandomData(3*1024*1024);
@@ -40,8 +41,7 @@ public class TestUDTInputStream extends UDTTestBase{
 	}
 	
 	public void testInOrder()throws Exception{
-		UDTStatistics stat=new UDTStatistics("test");
-		UDTInputStream is=new UDTInputStream(null, stat);
+		UDTInputStream is=new UDTInputStream(null);
 		is.setBlocking(false);
 		byte[]data=getRandomData(10*1024*1024);
 		
@@ -58,8 +58,7 @@ public class TestUDTInputStream extends UDTTestBase{
 	}
 	
 	public void testRandomOrder()throws Exception{
-		UDTStatistics stat=new UDTStatistics("test");
-		UDTInputStream is=new UDTInputStream(null, stat);
+		UDTInputStream is=new UDTInputStream(null);
 		is.setBlocking(false);
 		byte[]data=getRandomData(100*1024);
 		
@@ -74,6 +73,50 @@ public class TestUDTInputStream extends UDTTestBase{
 		String readMD5=readAll(is,512,true);
 		
 		assertEquals(digest,readMD5);
+	}
+	
+	
+	
+	public void testLargeDataSetTwoThreads()throws Exception{
+		final UDTInputStream is=new UDTInputStream(null);
+		is.setBlocking(false);
+		int n=100;
+		assertTrue("ERROR IN UNIT TEST : too many packets!",n<=is.getReceiveBufferSize());
+		final byte[]data=getRandomData(n*1024);
+		final byte[][]blocks=makeChunks(n,data);
+		String digest=computeMD5(blocks);
+		
+		Runnable write=new Runnable(){
+			public void run(){
+				try{
+					for(int i=0;i<blocks.length;i++){
+						while(!is.haveNewData(i+1, blocks[i])){
+							Thread.yield();
+							Thread.sleep(100);
+						}
+					}
+					is.noMoreData();
+				}catch(Exception e){
+					e.printStackTrace();
+					fail();
+				}
+			}
+		};
+		
+		Callable<String> reader=new Callable<String>(){
+			public String call() throws Exception {
+				String md5=readAll(is,1024*999);
+				return md5;
+			}
+		};
+		
+		ScheduledExecutorService es=Executors.newScheduledThreadPool(2);
+		es.execute(write);
+		Future<String> result=es.submit(reader);
+		String readMD5=result.get();
+		
+		assertEquals(digest,readMD5);
+		es.shutdownNow();
 	}
 	
 	//read and discard data from the given input stream

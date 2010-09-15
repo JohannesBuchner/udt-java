@@ -388,12 +388,17 @@ public class UDTReceiver {
 		
 		//check whether to drop this packet
 //		n++;
-		//if(dropRate>0 && n % dropRate == 0){
+//		//if(dropRate>0 && n % dropRate == 0){
 //		if(n==666){	
 //			logger.info("**** TESTING:::: DROPPING PACKET "+currentSequenceNumber+" FOR TESTING");
 //			return;
 //		}
-
+//		
+		boolean OK=session.getSocket().getInputStream().haveNewData(currentSequenceNumber,dp.getData());
+		if(!OK){
+			//need to drop packet...
+			return;
+		}
 		
 		long currentDataPacketArrivalTime = Util.getCurrentTime();
 
@@ -412,7 +417,6 @@ public class UDTReceiver {
 		//store current time
 		lastDataPacketArrivalTime=currentDataPacketArrivalTime;
 
-		session.getSocket().getInputStream().haveNewData(currentSequenceNumber,dp.getData());
 		
 		//(6).number of detected lossed packet
 		/*(6.a).if the number of the current data packet is greater than LSRN+1,
