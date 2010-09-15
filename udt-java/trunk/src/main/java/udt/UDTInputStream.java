@@ -34,12 +34,10 @@ package udt;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import udt.util.SequenceNumber;
-import udt.util.UDTStatistics;
+import udt.util.ReceiveBuffer;
 
 /**
  * The UDTInputStream receives data blocks from the {@link UDTSocket}
@@ -53,15 +51,7 @@ public class UDTInputStream extends InputStream {
 	//the socket owning this inputstream
 	private final UDTSocket socket;
 
-	//inbound application data, in-order, and ready for reading
-	//by the application
-	private final PriorityBlockingQueue<AppData>appData;
-
-	private final UDTStatistics statistics;
-
-	//the highest sequence number read by the application, initialised
-	//to the initial sequence number minus one
-	private volatile long highestSequenceNumber=0;
+	private final ReceiveBuffer receiveBuffer;
 
 	//set to 'false' by the receiver when it gets a shutdown signal from the peer
 	//see the noMoreData() method
@@ -74,26 +64,13 @@ public class UDTInputStream extends InputStream {
 	/**
 	 * create a new {@link UDTInputStream} connected to the given socket
 	 * @param socket - the {@link UDTSocket}
-	 * @param statistics - the {@link UDTStatistics}
-	 * @throws IOException
-	 */
-	public UDTInputStream(UDTSocket socket, UDTStatistics statistics)throws IOException{
-		this.socket=socket;
-		this.statistics=statistics;
-		int capacity=socket!=null? 4*socket.getSession().getFlowWindowSize() : 64 ;
-		appData=new PriorityBlockingQueue<AppData>(capacity);
-		if(socket!=null){
-			highestSequenceNumber=SequenceNumber.decrement(socket.getSession().getInitialSequenceNumber());
-		}
-	}
-
-	/**
-	 * create a new {@link UDTInputStream} connected to the given socket
-	 * @param socket - the {@link UDTSocket}
 	 * @throws IOException
 	 */
 	public UDTInputStream(UDTSocket socket)throws IOException{
-		this(socket, socket.getSession().getStatistics());
+		this.socket=socket;
+		int capacity=socket!=null? 2 * socket.getSession().getFlowWindowSize() : 128 ;
+		long initialSequenceNum=socket!=null?socket.getSession().getInitialSequenceNumber():1;
+		receiveBuffer=new ReceiveBuffer(capacity,initialSequenceNum);
 	}
 
 	private final byte[]single=new byte[1];
@@ -143,7 +120,7 @@ public class UDTInputStream extends InputStream {
 
 			if(read>0)return read;
 			if(closed)return -1;
-			if(expectMoreData.get() || !appData.isEmpty())return 0;
+			if(expectMoreData.get() || !receiveBuffer.isEmpty())return 0;
 			//no more data
 			return -1;
 
@@ -168,38 +145,19 @@ public class UDTInputStream extends InputStream {
 		while(true){
 			try{
 				if(block){
-					currentChunk=appData.poll(1, TimeUnit.MILLISECONDS);
+					currentChunk=receiveBuffer.poll(1, TimeUnit.MILLISECONDS);
 					while (!closed && currentChunk==null){
-						currentChunk=appData.poll(1000, TimeUnit.MILLISECONDS);
+						currentChunk=receiveBuffer.poll(1000, TimeUnit.MILLISECONDS);
 					}
 				}
-				else currentChunk=appData.poll(10, TimeUnit.MILLISECONDS);
+				else currentChunk=receiveBuffer.poll(10, TimeUnit.MILLISECONDS);
 				
 			}catch(InterruptedException ie){
 				IOException ex=new IOException();
 				ex.initCause(ie);
 				throw ex;
 			}
-			if(currentChunk!=null){
-				//check if the data is in-order
-				long cmp=SequenceNumber.compare(currentChunk.sequenceNumber,highestSequenceNumber+1);
-				if(cmp==0){
-					highestSequenceNumber=currentChunk.sequenceNumber;
-					return;
-				}
-				else if(cmp<0){
-					//duplicate, drop it
-					currentChunk=null;
-					statistics.incNumberOfDuplicateDataPackets();
-				}
-				else{
-					//out of order data, put back into queue and exit
-					appData.offer(currentChunk);
-					currentChunk=null;
-					return;
-				}
-			}
-			else return;
+			return;
 		}
 	}
 
@@ -209,8 +167,7 @@ public class UDTInputStream extends InputStream {
 	 * 
 	 */
 	protected boolean haveNewData(long sequenceNumber,byte[]data)throws IOException{
-		if(SequenceNumber.compare(sequenceNumber,highestSequenceNumber)<=0)return true;
-		return appData.offer(new AppData(sequenceNumber,data));
+		return receiveBuffer.offer(new AppData(sequenceNumber,data));
 	}
 
 	@Override
@@ -232,6 +189,10 @@ public class UDTInputStream extends InputStream {
 		this.blocking=block;
 	}
 
+	public int getReceiveBufferSize(){
+		return receiveBuffer.getSize();
+	}
+	
 	/**
 	 * notify the input stream that there is no more data
 	 * @throws IOException
@@ -247,7 +208,7 @@ public class UDTInputStream extends InputStream {
 	public static class AppData implements Comparable<AppData>{
 		final long sequenceNumber;
 		final byte[] data;
-		AppData(long sequenceNumber, byte[]data){
+		public AppData(long sequenceNumber, byte[]data){
 			this.sequenceNumber=sequenceNumber;
 			this.data=data;
 		}
@@ -260,6 +221,10 @@ public class UDTInputStream extends InputStream {
 			return sequenceNumber+"["+data.length+"]";
 		}
 
+		public long getSequenceNumber(){
+			return sequenceNumber;
+		}
+		
 		@Override
 		public int hashCode() {
 			final int prime = 31;
