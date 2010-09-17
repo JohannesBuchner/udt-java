@@ -386,14 +386,14 @@ public class UDTReceiver {
 	protected void onDataPacketReceived(DataPacket dp)throws IOException{
 		long currentSequenceNumber = dp.getPacketSequenceNumber();
 		
-		//check whether to drop this packet
+		//for TESTING : check whether to drop this packet
 //		n++;
 //		//if(dropRate>0 && n % dropRate == 0){
-//		if(n==666){	
-//			logger.info("**** TESTING:::: DROPPING PACKET "+currentSequenceNumber+" FOR TESTING");
-//			return;
-//		}
-//		
+//			if(n % 1111 == 0){	
+//				logger.info("**** TESTING:::: DROPPING PACKET "+currentSequenceNumber+" FOR TESTING");
+//				return;
+//			}
+//		//}
 		boolean OK=session.getSocket().getInputStream().haveNewData(currentSequenceNumber,dp.getData());
 		if(!OK){
 			//need to drop packet...

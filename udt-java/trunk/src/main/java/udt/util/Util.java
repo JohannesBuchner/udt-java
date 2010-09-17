@@ -134,6 +134,7 @@ public class Util {
 			c=source.read(buf);
 			if(c<0)break;
 			read+=c;
+			//System.out.println("writing <"+c+"> bytes");
 			target.write(buf, 0, c);
 			if(flush)target.flush();
 			if(read>=size && size>-1)break;
