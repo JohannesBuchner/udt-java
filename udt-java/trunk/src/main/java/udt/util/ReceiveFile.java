@@ -32,8 +32,10 @@
 
 package udt.util;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.text.NumberFormat;
 
@@ -101,22 +103,16 @@ public class ReceiveFile extends Application{
 				total+=r;
 			}
 			long size=decode(sizeInfo, 0);
-			if(verbose){
-				StringBuilder sb=new StringBuilder();
-				for(int i=0;i<sizeInfo.length;i++){
-					sb.append(Integer.toString(sizeInfo[i]));
-					sb.append(" ");
-				}
-				System.out.println("[ReceiveFile] Size info: "+sb.toString());
-			}
+			
 			File file=new File(new String(localFile));
 			System.out.println("[ReceiveFile] Write to local file <"+file.getAbsolutePath()+">");
 			FileOutputStream fos=new FileOutputStream(file);
+			OutputStream os=new BufferedOutputStream(fos,1024*1024);
 			try{
 				System.out.println("[ReceiveFile] Reading <"+size+"> bytes.");
 				long start = System.currentTimeMillis();
 			    //and read the file data
-				Util.copy(in, fos, size, false);
+				Util.copy(in, os, size, false);
 				long end = System.currentTimeMillis();
 				double rate=1000.0*size/1024/1024/(end-start);
 				System.out.println("[ReceiveFile] Rate: "+format.format(rate)+" MBytes/sec. "

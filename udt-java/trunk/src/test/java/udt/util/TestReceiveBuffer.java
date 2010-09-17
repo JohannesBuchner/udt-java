@@ -16,79 +16,79 @@ public class TestReceiveBuffer extends TestCase{
 		byte[]test1="test1".getBytes();
 		byte[]test2="test2".getBytes();
 		byte[]test3="test3".getBytes();
-		
+
 		b.offer(new AppData(1l,test1));
 		b.offer(new AppData(2l,test2));
 		b.offer(new AppData(3l,test3));
-		
+
 		AppData a=b.poll();
 		assertEquals(1l,a.getSequenceNumber());
-		
+
 		a=b.poll();
 		assertEquals(2l,a.getSequenceNumber());
-		
+
 		a=b.poll();
 		assertEquals(3l,a.getSequenceNumber());
-		
+
 		assertNull(b.poll());
 	}
-	
+
 	public void testOutOfOrder(){
 		ReceiveBuffer b=new ReceiveBuffer(16,1);
 		byte[]test1="test1".getBytes();
 		byte[]test2="test2".getBytes();
 		byte[]test3="test3".getBytes();
-		
+
 		b.offer(new AppData(3l,test3));
 		b.offer(new AppData(2l,test2));
 		b.offer(new AppData(1l,test1));
-		
+
 		AppData a=b.poll();
 		assertEquals(1l,a.getSequenceNumber());
-		
+
 		a=b.poll();
 		assertEquals(2l,a.getSequenceNumber());
-		
+
 		a=b.poll();
 		assertEquals(3l,a.getSequenceNumber());
-		
+
 		assertNull(b.poll());
 	}
-	
+
 	public void testInterleaved(){
 		ReceiveBuffer b=new ReceiveBuffer(16,1);
 		byte[]test1="test1".getBytes();
 		byte[]test2="test2".getBytes();
 		byte[]test3="test3".getBytes();
-		
+
 		b.offer(new AppData(3l,test3));
-		
+
 		b.offer(new AppData(1l,test1));
-		
+
 		AppData a=b.poll();
 		assertEquals(1l,a.getSequenceNumber());
-		
+
 		assertNull(b.poll());
-		
+
 		b.offer(new AppData(2l,test2));
-		
+
 		a=b.poll();
 		assertEquals(2l,a.getSequenceNumber());
-		
+
 		a=b.poll();
 		assertEquals(3l,a.getSequenceNumber());
 	}
-	
+
 	public void testOverflow(){
 		ReceiveBuffer b=new ReceiveBuffer(4,1);
-		
+
 		for(int i=0; i<3; i++){
 			b.offer(new AppData(i+1,"test".getBytes()));
 		}
 		for(int i=0; i<3; i++){
 			assertEquals(i+1, b.poll().getSequenceNumber());
 		}
-		
+
 		for(int i=0; i<3; i++){
 			b.offer(new AppData(i+4,"test".getBytes()));
 		}
@@ -96,13 +96,13 @@ public class TestReceiveBuffer extends TestCase{
 			assertEquals(i+4, b.poll().getSequenceNumber());
 		}
 	}
-	
-	
+
+
 	public void testTimedPoll()throws Exception{
 		final ReceiveBuffer b=new ReceiveBuffer(4,1);
-		
+
 		Runnable write=new Runnable(){
-			
+
 			public void run(){
 				try{
 					for(int i=0; i<5; i++){
@@ -115,7 +115,7 @@ public class TestReceiveBuffer extends TestCase{
 				}
 			}
 		};
-		
+
 		Callable<String> reader=new Callable<String>(){
 			public String call() throws Exception {
 				for(int i=0; i<5; i++){
@@ -131,12 +131,60 @@ public class TestReceiveBuffer extends TestCase{
 				return "OK.";
 			}
 		};
-		
+
 		ScheduledExecutorService es=Executors.newScheduledThreadPool(2);
 		es.execute(write);
 		Future<String>res=es.submit(reader);
 		res.get();
 		es.shutdownNow();
 	}
+
+
+	volatile boolean poll=false;
 	
+	public void testTimedPoll2()throws Exception{
+		final ReceiveBuffer b=new ReceiveBuffer(4,1);
+		
+		Runnable write=new Runnable(){
+
+			public void run(){
+				try{
+					Thread.sleep(2979);
+					System.out.println("PUT");
+					while(!poll)Thread.sleep(10);
+					b.offer(new AppData(1,"test".getBytes()));
+					System.out.println("... PUT OK");
+				}
+				catch(Exception e){
+					e.printStackTrace();
+					fail();
+				}
+			}
+		};
+
+		Callable<String> reader=new Callable<String>(){
+			public String call() throws Exception {
+				AppData r=null;
+				do{
+					try{
+						poll=true;
+						System.out.println("POLL");
+						r=b.poll(1000, TimeUnit.MILLISECONDS);
+						poll=false;
+						if(r!=null)System.out.println("... POLL OK");
+						else System.out.println("... nothing.");
+					}catch(InterruptedException ie){
+						ie.printStackTrace();
+					}
+				}while(r==null);
+				return "OK.";
+			}
+		};
+
+		ScheduledExecutorService es=Executors.newScheduledThreadPool(2);
+		es.execute(write);
+		Future<String>res=es.submit(reader);
+		res.get();
+		es.shutdownNow();
+	}
 }

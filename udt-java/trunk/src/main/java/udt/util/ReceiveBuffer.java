@@ -61,6 +61,7 @@ public class ReceiveBuffer {
 			int insert=offset% size;
 			buffer[insert]=data;
 			numValidChunks.incrementAndGet();
+			notEmpty.signal();
 			return true;
 		}finally{
 			lock.unlock();
