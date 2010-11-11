@@ -51,7 +51,7 @@ public class SenderLossList {
 		synchronized (backingList) {
 			if(!backingList.contains(obj)){
 				for(int i=0;i<backingList.size();i++){
-					if(obj<backingList.getFirst()){
+					if(obj<backingList.get(i)){
 						backingList.add(i,obj);	
 						return;
 					}
