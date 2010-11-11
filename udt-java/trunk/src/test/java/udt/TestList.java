@@ -88,6 +88,10 @@ public class TestList extends TestCase{
 		assertEquals(3,l.size());
 		Long oldest=l.getFirstEntry();
 		assertEquals(C,oldest);
+		oldest=l.getFirstEntry();
+		assertEquals(A,oldest);
+		oldest=l.getFirstEntry();
+		assertEquals(B,oldest);
 	}
 
 	public void testReceiverInputQueue(){
