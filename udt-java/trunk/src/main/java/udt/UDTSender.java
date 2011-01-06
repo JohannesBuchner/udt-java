@@ -125,7 +125,7 @@ public class UDTSender {
 		statistics=session.getStatistics();
 		senderLossList=new SenderLossList();
 		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(session.getFlowWindowSize(),0.75f,2); 
-		sendQueue = new ArrayBlockingQueue<DataPacket>(1000);  
+		sendQueue = new ArrayBlockingQueue<DataPacket>(session.getFlowWindowSize(), /*fairness*/ true);  
 		lastAckSequenceNumber=session.getInitialSequenceNumber();
 		currentSequenceNumber=session.getInitialSequenceNumber()-1;
 		waitForAckLatch.set(new CountDownLatch(1));
@@ -140,11 +140,11 @@ public class UDTSender {
 	private MeanThroughput throughput;
 	private void initMetrics(){
 		if(!storeStatistics)return;
-		dgSendTime=new MeanValue("Datagram send time");
+		dgSendTime=new MeanValue("SENDER: Datagram send time");
 		statistics.addMetric(dgSendTime);
-		dgSendInterval=new MeanValue("Datagram send interval");
+		dgSendInterval=new MeanValue("SENDER: Datagram send interval");
 		statistics.addMetric(dgSendInterval);
-		throughput=new MeanThroughput("Throughput", session.getDatagramSize());
+		throughput=new MeanThroughput("SENDER: Throughput", session.getDatagramSize());
 		statistics.addMetric(throughput);
 	}
 
@@ -338,7 +338,7 @@ public class UDTSender {
 				if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
 						 && unAcknowledged<session.getFlowWindowSize()){
 					//check for application data
-					DataPacket dp=sendQueue.poll(Util.SYN,TimeUnit.MICROSECONDS);
+					DataPacket dp=sendQueue.poll();
 					if(dp!=null){
 						send(dp);
 						largestSentSequenceNumber=dp.getPacketSequenceNumber();

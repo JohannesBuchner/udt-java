@@ -183,13 +183,13 @@ public class UDTReceiver {
 	private MeanValue dataProcessTime;
 	private void initMetrics(){
 		if(!storeStatistics)return;
-		dgReceiveInterval=new MeanValue("UDT receive interval");
+		dgReceiveInterval=new MeanValue("RECEIVER: UDT receive interval");
 		statistics.addMetric(dgReceiveInterval);
-		dataPacketInterval=new MeanValue("Data packet interval");
+		dataPacketInterval=new MeanValue("RECEIVER: Data packet interval");
 		statistics.addMetric(dataPacketInterval);
-		processTime=new MeanValue("UDT packet process time");
+		processTime=new MeanValue("RECEIVER: UDT packet process time");
 		statistics.addMetric(processTime);
-		dataProcessTime=new MeanValue("Data packet process time");
+		dataProcessTime=new MeanValue("RECEIVER: Data packet process time");
 		statistics.addMetric(dataProcessTime);
 	}
 

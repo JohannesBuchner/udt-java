@@ -9,6 +9,8 @@ import java.util.Locale;
 public class MeanValue {
 
 	private double mean=0;
+	private double max=0;
+	private double min=0;
 	
 	private int n=0;
 	
@@ -43,9 +45,15 @@ public class MeanValue {
 	public void addValue(double value){
 		mean=(mean*n+value)/(n+1);
 		n++;
+		max=Math.max(max, value);
+		min=Math.min(max, value);
+		
 		if(verbose &&  n % nValue == 0){
-			if(msg!=null)System.out.println(msg+" "+getFormattedMean());
-			else System.out.println(name+getFormattedMean());
+			if(msg!=null)System.out.println(msg+" "+get());
+			else System.out.println(name+" "+get());
+			
+			max=0;
+			min=0;
 		}
 	}
 	
@@ -55,6 +63,10 @@ public class MeanValue {
 	
 	public String getFormattedMean(){
 		return format.format(getMean());
+	}
+	
+	public String get(){
+		return format.format(getMean())+" max="+format.format(max)+" min="+format.format(min);
 	}
 	
 	public void clear(){

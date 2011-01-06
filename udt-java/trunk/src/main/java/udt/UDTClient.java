@@ -93,14 +93,19 @@ public class UDTClient {
 	/**
 	 * sends the given data asynchronously
 	 * 
-	 * @param data
+	 * @param data - the data to send
 	 * @throws IOException
-	 * @throws InterruptedException
 	 */
-	public void send(byte[]data)throws IOException, InterruptedException{
+	public void send(byte[]data)throws IOException{
 		clientSession.getSocket().doWrite(data);
 	}
 
+	/**
+	 * sends the given data and waits for acknowledgement
+	 * @param data - the data to send
+	 * @throws IOException
+	 * @throws InterruptedException if interrupted while waiting for ack
+	 */
 	public void sendBlocking(byte[]data)throws IOException, InterruptedException{
 		clientSession.getSocket().doWriteBlocking(data);
 	}
