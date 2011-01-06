@@ -117,12 +117,17 @@ public class UDPEndPoint {
 		if(localPort>0)this.port = localPort;
 		else port=dgSocket.getLocalPort();
 		
+		configureSocket();
+	}
+
+	protected void configureSocket()throws SocketException{
 		//set a time out to avoid blocking in doReceive()
 		dgSocket.setSoTimeout(100000);
 		//buffer size
 		dgSocket.setReceiveBufferSize(128*1024);
+		dgSocket.setReuseAddress(false);
 	}
-
+	
 	/**
 	 * bind to the default network interface on the machine
 	 * 
@@ -237,8 +242,6 @@ public class UDPEndPoint {
 	private long lastDestID=-1;
 	private UDTSession lastSession;
 	
-	//MeanValue v=new MeanValue("receiver processing ",true, 256);
-	
 	private int n=0;
 	
 	private final Object lock=new Object();
@@ -247,12 +250,9 @@ public class UDPEndPoint {
 		while(!stopped){
 			try{
 				try{
-					//v.end();
 					
 					//will block until a packet is received or timeout has expired
 					dgSocket.receive(dp);
-					
-					//v.begin();
 					
 					Destination peer=new Destination(dp.getAddress(), dp.getPort());
 					int l=dp.getLength();

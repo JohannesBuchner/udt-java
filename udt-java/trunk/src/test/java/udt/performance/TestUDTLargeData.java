@@ -21,7 +21,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=200;
+	int num_packets=300;
 	
 	//how large is a single packet
 	int size=1*1024*1024;
@@ -32,6 +32,8 @@ public class TestUDTLargeData extends UDTTestBase{
 
 	public void test1()throws Exception{
 		Logger.getLogger("udt").setLevel(Level.INFO);
+//		System.setProperty("udt.receiver.storeStatistics","true");
+//		System.setProperty("udt.sender.storeStatistics","true");
 		UDTReceiver.dropRate=0;
 		TIMEOUT=Integer.MAX_VALUE;
 		doTest();
@@ -109,6 +111,10 @@ public class TestUDTLargeData extends UDTTestBase{
 		Runnable serverProcess=new Runnable(){
 			public void run(){
 				try{
+					Boolean devNull=Boolean.getBoolean("udt.dev.null");
+					if(devNull){
+						while(true)Thread.sleep(10000);
+					}
 					MessageDigest md5=MessageDigest.getInstance("MD5");
 					long start=System.currentTimeMillis();
 					UDTSocket s=serverSocket.accept();

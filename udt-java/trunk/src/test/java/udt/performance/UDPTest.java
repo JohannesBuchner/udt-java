@@ -23,8 +23,10 @@ public class UDPTest extends TestCase {
 	public void test1()throws Exception{
 		runServer();
 		runThirdThread();
+		
 		//client socket
 		DatagramSocket s=new DatagramSocket(12345);
+		
 		//generate a test array with random content
 		N=num_packets*packetSize;
 		byte[]data=new byte[packetSize];
@@ -34,32 +36,29 @@ public class UDPTest extends TestCase {
 		dp.setAddress(InetAddress.getByName("localhost"));
 		dp.setPort(65321);
 		System.out.println("Sending "+num_packets+" data blocks of <"+packetSize+"> bytes");
-		MeanValue v=new MeanValue("Datagram send time",false);
-		MeanValue v2=new MeanValue("Datagram send interval",false);
-		MeanValue v3=new MeanValue("Encoding time",false);
+		MeanValue dgSendTime=new MeanValue("Datagram send time",false);
+		MeanValue dgSendInterval=new MeanValue("Datagram send interval",false);
 		
 		for(int i=0;i<num_packets;i++){
 			DataPacket p=new DataPacket();
 			p.setData(data);
-			v3.begin();
 			dp.setData(p.getEncoded());
-			v3.end();
-			v2.end();
-			v.begin();
+			dgSendInterval.end();
+			dgSendTime.begin();
 			s.send(dp);
-			v.end();
-			v2.begin();
+			dgSendTime.end();
+			dgSendInterval.begin();
 		}
 		System.out.println("Finished sending.");
 		while(serverRunning)Thread.sleep(10);
 		System.out.println("Server stopped.");
 		long end=System.currentTimeMillis();
 		System.out.println("Done. Sending "+N/1024/1024+" Mbytes took "+(end-start)+" ms");
-		System.out.println("Rate "+N/1000/(end-start)+" Mbytes/sec");
+		float rate=N/1000/(end-start);
+		System.out.println("Rate "+rate+" Mbytes/sec "+(rate*8)+ " Mbit/sec");
 		System.out.println("Rate "+num_packets+" packets/sec");
-		System.out.println("Mean send time "+v.getFormattedMean()+" microsec");
-		System.out.println("Mean send interval "+v2.getFormattedMean()+" microsec");
-		System.out.println("Datapacket encoding time "+v3.getFormattedMean()+" microsec");
+		System.out.println("Mean send time "+dgSendTime.get());
+		System.out.println("Mean send interval "+dgSendInterval.get());
 		System.out.println("Server received: "+total);
 	}
 
@@ -79,6 +78,7 @@ public class UDPTest extends TestCase {
 					while(true){
 						serverSocket.receive(dp);
 						handoff.offer(dp);
+						total+=dp.getLength();
 					}
 				}
 				catch(Exception e){
@@ -117,5 +117,5 @@ public class UDPTest extends TestCase {
 		t.start();
 		
 	}
-	
+
 }

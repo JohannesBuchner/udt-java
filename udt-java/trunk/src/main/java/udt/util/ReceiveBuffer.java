@@ -44,7 +44,6 @@ public class ReceiveBuffer {
 		lock=new ReentrantLock(false);
 		notEmpty=lock.newCondition();
 		highestReadSequenceNumber=SequenceNumber.decrement(initialSequenceNumber);
-		System.out.println("SIZE: "+size);
 	}
 
 	public boolean offer(AppData data){
@@ -121,14 +120,6 @@ public class ReceiveBuffer {
 			}
 			else return null;
 		}
-		//		else{
-		//			System.out.println("empty HEAD at pos="+readPosition);
-		//			try{
-		//				Thread.sleep(1000);
-		//				Thread.yield();
-		//			}catch(InterruptedException e){};
-		//		}
-
 		return r;
 	}
 
