@@ -33,9 +33,8 @@
 package udt;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -49,6 +48,7 @@ import udt.packets.Acknowledgment2;
 import udt.packets.DataPacket;
 import udt.packets.KeepAlive;
 import udt.packets.NegativeAcknowledgement;
+import udt.sender.FlowWindow;
 import udt.sender.SenderLossList;
 import udt.util.MeanThroughput;
 import udt.util.MeanValue;
@@ -76,13 +76,12 @@ public class UDTSender {
 	//senderLossList stores the sequence numbers of lost packets
 	//fed back by the receiver through NAK pakets
 	private final SenderLossList senderLossList;
-	
+
 	//sendBuffer stores the sent data packets and their sequence numbers
-	private final Map<Long,DataPacket>sendBuffer;
-	
-	//sendQueue contains the packets to send
-	private final BlockingQueue<DataPacket>sendQueue;
-	
+	private final Map<Long,byte[]>sendBuffer;
+
+	private final FlowWindow flowWindow;
+
 	//thread reading packets from send queue and sending them
 	private Thread senderThread;
 
@@ -117,15 +116,18 @@ public class UDTSender {
 	private final AtomicReference<CountDownLatch> waitForSeqAckLatch=new AtomicReference<CountDownLatch>();
 
 	private final boolean storeStatistics;
-
+	
+	private final int chunksize;
+	
 	public UDTSender(UDTSession session,UDPEndPoint endpoint){
 		if(!session.isReady())throw new IllegalStateException("UDTSession is not ready.");
 		this.endpoint= endpoint;
 		this.session=session;
 		statistics=session.getStatistics();
 		senderLossList=new SenderLossList();
-		sendBuffer=new ConcurrentHashMap<Long, DataPacket>(session.getFlowWindowSize(),0.75f,2); 
-		sendQueue = new ArrayBlockingQueue<DataPacket>(session.getFlowWindowSize(), /*fairness*/ true);  
+		sendBuffer=new ConcurrentHashMap<Long, byte[]>(session.getFlowWindowSize(),0.75f,2); 
+		chunksize=session.getDatagramSize()-24;//need space for the header;
+		flowWindow=new FlowWindow(session.getFlowWindowSize(),chunksize);
 		lastAckSequenceNumber=session.getInitialSequenceNumber();
 		currentSequenceNumber=session.getInitialSequenceNumber()-1;
 		waitForAckLatch.set(new CountDownLatch(1));
@@ -179,16 +181,14 @@ public class UDTSender {
 			}
 		};
 		senderThread=UDTThreadFactory.get().newThread(r);
+		String s=(session instanceof ServerSession)? "ServerSession": "ClientSession";
+		senderThread.setName("UDTSender-"+s+"-"+senderThread.getName());
 		senderThread.start();
 	}
 
 
 	/** 
 	 * sends the given data packet, storing the relevant information
-	 * 
-	 * @param data
-	 * @throws IOException
-	 * @throws InterruptedException
 	 */
 	private void send(DataPacket p)throws IOException{
 		synchronized(sendLock){
@@ -203,28 +203,63 @@ public class UDTSender {
 				throughput.end();
 				throughput.begin();
 			}
-			sendBuffer.put(p.getPacketSequenceNumber(), p);
+			sendBuffer.put(p.getPacketSequenceNumber(), p.getData());
 			unacknowledged.incrementAndGet();
 		}
 		statistics.incNumberOfSentDataPackets();
 	}
 
+	protected void sendUdtPacket(ByteBuffer bb, int timeout, TimeUnit units)throws IOException, InterruptedException{
+		if(!started)start();
+		DataPacket packet=null;
+		do{
+			packet=flowWindow.getForProducer();
+			if(packet==null){
+				Thread.sleep(10);
+			}
+		}while(packet==null);//TODO check timeout...
+		try{
+			packet.setPacketSequenceNumber(getNextSequenceNumber());
+			packet.setSession(session);
+			packet.setDestinationID(session.getDestination().getSocketID());
+			int len=Math.min(bb.remaining(),chunksize);
+			byte[] data=packet.getData();
+			bb.get(data,0,len);
+			packet.setLength(len);
+		}finally{
+			flowWindow.produce();
+		}
+
+	}
+	
 	/**
-	 * writes a data packet into the sendQueue, waiting at most for the specified time
+	 * writes a data packet, waiting at most for the specified time
 	 * if this is not possible due to a full send queue
 	 * 
-	 * @return <code>true</code>if the packet was added, <code>false</code> if the
-	 * packet could not be added because the queue was full
-	 * @param p
 	 * @param timeout
 	 * @param units
 	 * @return
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	protected boolean sendUdtPacket(DataPacket p, int timeout, TimeUnit units)throws IOException,InterruptedException{
+	protected void sendUdtPacket(byte[]data, int timeout, TimeUnit units)throws IOException, InterruptedException{
 		if(!started)start();
-		return sendQueue.offer(p,timeout,units);
+		DataPacket packet=null;
+		do{
+			packet=flowWindow.getForProducer();
+			if(packet==null){
+				Thread.sleep(10);
+				//	System.out.println("queue full: "+flowWindow);
+			}
+		}while(packet==null);
+		try{
+			packet.setPacketSequenceNumber(getNextSequenceNumber());
+			packet.setSession(session);
+			packet.setDestinationID(session.getDestination().getSocketID());
+			packet.setData(data);
+		}finally{
+			flowWindow.produce();
+		}
 	}
 
 	//receive a packet from server from the peer
@@ -268,6 +303,7 @@ public class UDTSender {
 		for(long s=lastAckSequenceNumber;s<ackNumber;s++){
 			synchronized (sendLock) {
 				removed=sendBuffer.remove(s)!=null;
+				senderLossList.remove(s);
 			}
 			if(removed){
 				unacknowledged.decrementAndGet();
@@ -291,7 +327,7 @@ public class UDTSender {
 		session.getCongestionControl().onLoss(nak.getDecodedLossInfo());
 		session.getSocket().getReceiver().resetEXPTimer();
 		statistics.incNumberOfNAKReceived();
-	
+
 		if(logger.isLoggable(Level.FINER)){
 			logger.finer("NAK for "+nak.getDecodedLossInfo().size()+" packets lost, " 
 					+"set send period to "+session.getCongestionControl().getSendInterval());
@@ -322,13 +358,11 @@ public class UDTSender {
 	public void senderAlgorithm()throws InterruptedException, IOException{
 		while(!paused){
 			iterationStart=Util.getCurrentTime();
-			
 			//if the sender's loss list is not empty 
-			if (!senderLossList.isEmpty()) {
-				Long entry=senderLossList.getFirstEntry();
-				handleResubmit(entry);
+			Long entry=senderLossList.getFirstEntry();
+			if(entry!=null){
+				handleRetransmit(entry);
 			}
-
 			else
 			{
 				//if the number of unacknowledged data packets does not exceed the congestion 
@@ -336,9 +370,9 @@ public class UDTSender {
 				int unAcknowledged=unacknowledged.get();
 
 				if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
-						 && unAcknowledged<session.getFlowWindowSize()){
+						&& unAcknowledged<session.getFlowWindowSize()){
 					//check for application data
-					DataPacket dp=sendQueue.poll();
+					DataPacket dp=flowWindow.consumeData();
 					if(dp!=null){
 						send(dp);
 						largestSentSequenceNumber=dp.getPacketSequenceNumber();
@@ -374,15 +408,21 @@ public class UDTSender {
 	}
 
 	/**
-	 * re-submits an entry from the sender loss list
+	 * re-transmit an entry from the sender loss list
 	 * @param entry
 	 */
-	protected void handleResubmit(Long seqNumber){
+	protected void handleRetransmit(Long seqNumber){
 		try {
 			//retransmit the packet and remove it from  the list
-			DataPacket pktToRetransmit = sendBuffer.get(seqNumber);
-			if(pktToRetransmit!=null){
-				endpoint.doSend(pktToRetransmit);
+			byte[]data=sendBuffer.get(seqNumber);
+			if(data!=null){
+				//System.out.println("re-transmit "+data);
+				DataPacket packet=new DataPacket();
+				packet.setPacketSequenceNumber(seqNumber);
+				packet.setSession(session);
+				packet.setDestinationID(session.getDestination().getSocketID());
+				packet.setData(data);
+				endpoint.doSend(packet);
 				statistics.incNumberOfRetransmittedDataPackets();
 			}
 		}catch (Exception e) {
@@ -457,14 +497,14 @@ public class UDTSender {
 	 */
 	public void waitForAck()throws InterruptedException{
 		waitForAckLatch.set(new CountDownLatch(1));
-		waitForAckLatch.get().await(2, TimeUnit.MILLISECONDS);
+		waitForAckLatch.get().await(200, TimeUnit.MICROSECONDS);
 	}
 
 
 	public void stop(){
 		stopped=true;
 	}
-	
+
 	public void pause(){
 		startLatch=new CountDownLatch(1);
 		paused=true;

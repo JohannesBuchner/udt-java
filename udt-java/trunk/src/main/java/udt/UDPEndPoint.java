@@ -168,6 +168,7 @@ public class UDPEndPoint {
 			}
 		};
 		Thread t=UDTThreadFactory.get().newThread(receive);
+		t.setName("UDPEndpoint-"+t.getName());
 		t.setDaemon(true);
 		t.start();
 		logger.info("UDTEndpoint started.");

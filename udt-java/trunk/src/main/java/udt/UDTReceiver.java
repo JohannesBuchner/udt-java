@@ -214,6 +214,8 @@ public class UDTReceiver {
 			}
 		};
 		receiverThread=UDTThreadFactory.get().newThread(r);
+		String s=(session instanceof ServerSession)? "ServerSession": "ClientSession";
+		receiverThread.setName("UDTReceiver-"+s+"-"+receiverThread.getName());
 		receiverThread.start();
 	}
 

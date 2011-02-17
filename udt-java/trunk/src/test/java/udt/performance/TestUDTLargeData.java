@@ -21,7 +21,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=300;
+	int num_packets=100;
 	
 	//how large is a single packet
 	int size=1*1024*1024;
@@ -55,7 +55,7 @@ public class TestUDTLargeData extends UDTTestBase{
 		new Random().nextBytes(data);
 		
 		MessageDigest digest=MessageDigest.getInstance("MD5");
-		while(!serverRunning)Thread.sleep(100);
+		while(!serverStarted)Thread.sleep(100);
 		long start=System.currentTimeMillis();
 		System.out.println("Sending <"+num_packets+"> packets of <"+format.format(size/1024.0/1024.0)+"> Mbytes each");
 		long end=0;
@@ -101,6 +101,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	long total=0;
 	
 	volatile boolean serverRunning=true;
+	volatile boolean serverStarted=false;
 	
 	volatile String md5_received=null;
 	
@@ -110,6 +111,7 @@ public class TestUDTLargeData extends UDTTestBase{
 		
 		Runnable serverProcess=new Runnable(){
 			public void run(){
+				
 				try{
 					Boolean devNull=Boolean.getBoolean("udt.dev.null");
 					if(devNull){
@@ -118,6 +120,7 @@ public class TestUDTLargeData extends UDTTestBase{
 					MessageDigest md5=MessageDigest.getInstance("MD5");
 					long start=System.currentTimeMillis();
 					UDTSocket s=serverSocket.accept();
+					serverStarted=true;
 					assertNotNull(s);
 					UDTInputStream is=s.getInputStream();
 					byte[]buf=new byte[READ_BUFFERSIZE];
