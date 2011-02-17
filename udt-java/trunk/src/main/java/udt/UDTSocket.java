@@ -36,46 +36,41 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
-
-import udt.packets.DataPacket;
-
 /**
  * UDTSocket is analogous to a normal java.net.Socket, it provides input and 
  * output streams for the application
  * 
  * TODO is it possible to actually extend java.net.Socket ?
  * 
- * 
  */
 public class UDTSocket {
-	
+
 	//endpoint
 	private final UDPEndPoint endpoint;
-	
+
 	private volatile boolean active;
-	
-    //processing received data
+
+	//processing received data
 	private UDTReceiver receiver;
 	private UDTSender sender;
-	
+
 	private final UDTSession session;
 
 	private UDTInputStream inputStream;
 	private UDTOutputStream outputStream;
-
 	/**
-     * @param host
-     * @param port
-     * @param endpoint
-     * @throws SocketException,UnknownHostException
-     */
+	 * @param host
+	 * @param port
+	 * @param endpoint
+	 * @throws SocketException,UnknownHostException
+	 */
 	public UDTSocket(UDPEndPoint endpoint, UDTSession session)throws SocketException,UnknownHostException{
 		this.endpoint=endpoint;
 		this.session=session;
 		this.receiver=new UDTReceiver(session,endpoint);
 		this.sender=new UDTSender(session,endpoint);
 	}
-	
+
 	public UDTReceiver getReceiver() {
 		return receiver;
 	}
@@ -114,7 +109,7 @@ public class UDTSocket {
 		}
 		return inputStream;
 	}
-    
+
 	/**
 	 * get the output stream for writing to this socket
 	 * @return
@@ -125,20 +120,20 @@ public class UDTSocket {
 		}
 		return outputStream;
 	}
-	
+
 	public final UDTSession getSession(){
 		return session;
 	}
-	
+
 	/**
 	 * write single block of data without waiting for any acknowledgement
 	 * @param data
 	 */
 	protected void doWrite(byte[]data)throws IOException{
 		doWrite(data, 0, data.length);
-		
+
 	}
-	
+
 	/**
 	 * write the given data 
 	 * @param data - the data array
@@ -148,14 +143,14 @@ public class UDTSocket {
 	 */
 	protected void doWrite(byte[]data, int offset, int length)throws IOException{
 		try{
-			doWrite(data, offset, length, Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
+			doWrite(data, offset, length, 10, TimeUnit.MILLISECONDS);
 		}catch(InterruptedException ie){
 			IOException io=new IOException();
 			io.initCause(ie);
 			throw io;
 		}
 	}
-	
+
 	/**
 	 * write the given data, waiting at most for the specified time if the queue is full
 	 * @param data
@@ -167,26 +162,17 @@ public class UDTSocket {
 	 * @throws InterruptedException
 	 */
 	protected void doWrite(byte[]data, int offset, int length, int timeout, TimeUnit units)throws IOException,InterruptedException{
-		int chunksize=session.getDatagramSize()-24;//need some bytes for the header
 		ByteBuffer bb=ByteBuffer.wrap(data,offset,length);
-		long seqNo=0;
 		while(bb.remaining()>0){
-			int len=Math.min(bb.remaining(),chunksize);
-			byte[]chunk=new byte[len];
-			bb.get(chunk);
-			DataPacket packet=new DataPacket();
-			seqNo=sender.getNextSequenceNumber();
-			packet.setPacketSequenceNumber(seqNo);
-			packet.setSession(session);
-			packet.setDestinationID(session.getDestination().getSocketID());
-			packet.setData(chunk);
-			//put the packet into the send queue
-			if(!sender.sendUdtPacket(packet, timeout, units)){
-				throw new IOException("Queue full");
+			try{
+				sender.sendUdtPacket(bb, timeout, units);
+			}catch(Exception ex){
+				ex.printStackTrace();
 			}
 		}
 		if(length>0)active=true;
 	}
+
 	/**
 	 * will block until the outstanding packets have really been sent out
 	 * and acknowledged
@@ -207,13 +193,13 @@ public class UDTSocket {
 		//TODO need to check if we can pause the sender...
 		//sender.pause();
 	}
-	
+
 	//writes and wait for ack
 	protected void doWriteBlocking(byte[]data)throws IOException, InterruptedException{
 		doWrite(data);
 		flush();
 	}
-	
+
 	/**
 	 * close the connection
 	 * @throws IOException

@@ -188,7 +188,7 @@ public class UDTStatistics {
 		sb.append("Duplicate data packets: ").append(getNumberOfDuplicateDataPackets()).append("\n");
 		sb.append("ACK received: ").append(getNumberOfACKReceived()).append("\n");
 		sb.append("NAK received: ").append(getNumberOfNAKReceived()).append("\n");
-		sb.append("Retransmitted data: ").append(getNumberOfNAKReceived()).append("\n");
+		sb.append("Retransmitted data: ").append(getNumberOfRetransmittedDataPackets()).append("\n");
 		sb.append("NAK sent: ").append(getNumberOfNAKSent()).append("\n");
 		sb.append("ACK sent: ").append(getNumberOfACKSent()).append("\n");
 		if(roundTripTime>0){

@@ -74,7 +74,7 @@ public abstract class UDTSession {
 	 * flow window size, i.e. how many data packets are
 	 * in-flight at a single time
 	 */
-	protected int flowWindowSize=1024;
+	protected int flowWindowSize=1024*10;
 
 	/**
 	 * remote UDT entity (address and socket ID)

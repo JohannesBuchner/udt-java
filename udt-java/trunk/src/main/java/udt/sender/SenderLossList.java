@@ -33,8 +33,6 @@
 package udt.sender;
 import java.util.LinkedList;
 
-import udt.util.MeanValue;
-
 /**
  * stores the sequence number of the lost packets in increasing order
  */
@@ -57,14 +55,19 @@ public class SenderLossList {
 					backingList.add(i,obj);	
 					return;
 				}
-				else if(obj==entry)return;
+				else if(obj.equals(entry))return;
 			}
 			backingList.add(obj);
 		}
 	}
 
+	public void remove(Long obj){
+		synchronized (backingList) {
+			backingList.remove(obj);
+		}
+	}
 	/**
-	 * retrieves the loss list entry with the lowest sequence number
+	 * retrieves the loss list entry with the lowest sequence number, or <code>null</code> if loss list is empty
 	 */
 	public Long getFirstEntry(){
 		synchronized(backingList){

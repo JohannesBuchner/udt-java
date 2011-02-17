@@ -44,12 +44,15 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 	private long destinationID;
 
 	private UDTSession session;
+
+	private int dataLength;
 	
 	public DataPacket(){
 	}
 
 	/**
-	 * create a DataPacket
+	 * create a DataPacket from the given raw data
+	 * 
 	 * @param encodedData - network data
 	 */
 	public DataPacket(byte[] encodedData){
@@ -58,6 +61,7 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 
 	public DataPacket(byte[] encodedData, int length){
 		decode(encodedData,length);
+		dataLength=length;
 	}
 	
 	void decode(byte[]encodedData,int length){
@@ -75,16 +79,16 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 	}
 
 	public double getLength(){
-		return data.length;
+		return dataLength;
 	}
 
-	/*
-	 * aplivation data
-	 * @param
-	 */
-
+	public void setLength(int length){
+		dataLength=length;
+	}
+	
 	public void setData(byte[] data) {
 		this.data = data;
+		dataLength=data.length;
 	}
 
 	public long getPacketSequenceNumber() {
@@ -125,12 +129,12 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 	 */
 	public byte[] getEncoded(){
 		//header.length is 16
-		byte[] result=new byte[16+data.length];
+		byte[] result=new byte[16+dataLength];
 		System.arraycopy(PacketUtil.encode(packetSequenceNumber), 0, result, 0, 4);
 		System.arraycopy(PacketUtil.encode(messageNumber), 0, result, 4, 4);
 		System.arraycopy(PacketUtil.encode(timeStamp), 0, result, 8, 4);
 		System.arraycopy(PacketUtil.encode(destinationID), 0, result, 12, 4);
-		System.arraycopy(data, 0, result, 16, data.length);
+		System.arraycopy(data, 0, result, 16, dataLength);
 		return result;
 	}
 

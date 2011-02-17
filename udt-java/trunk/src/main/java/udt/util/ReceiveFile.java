@@ -109,7 +109,6 @@ public class ReceiveFile extends Application{
 				while(true)Thread.sleep(10000);
 			}
 			
-			
 			File file=new File(new String(localFile));
 			System.out.println("[ReceiveFile] Write to local file <"+file.getAbsolutePath()+">");
 			FileOutputStream fos=new FileOutputStream(file);

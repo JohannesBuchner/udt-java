@@ -39,12 +39,17 @@ import udt.util.CircularArray;
  */
 public class PacketHistoryWindow extends CircularArray<Long>{
 
+	private final long[]intervals;
+	private final int num;
+	
 	/**
 	 * create a new PacketHistoryWindow of the given size 
 	 * @param size
 	 */
 	public PacketHistoryWindow(int size){
 		super(size);
+		num=max-1;
+		intervals=new long[num];
 	}
 
 	/**
@@ -54,12 +59,11 @@ public class PacketHistoryWindow extends CircularArray<Long>{
 	 */
 	public long getPacketArrivalSpeed(){
 		if(!haveOverflow)return 0;
-		int num=max-1;
+		
 		double AI;
 		double medianPacketArrivalSpeed;
 		double total=0;
 		int count=0;
-		long[]intervals=new long[num];
 		int pos=position-1;
 		if(pos<0)pos=num;
 		do{
