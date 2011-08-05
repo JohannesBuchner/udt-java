@@ -62,7 +62,7 @@ public class UDTSocket extends Socket{
             = new ArrayList<UDTSocketAddress>(120);
 
 	//endpoint
-	private volatile UDPEndPoint endpoint;
+	private volatile UDPMultiplexer endpoint;
 
 	private volatile boolean active;
         private volatile boolean connected;
@@ -90,7 +90,7 @@ public class UDTSocket extends Socket{
 	 * @param endpoint
 	 * @throws SocketException,UnknownHostException
 	 */
-	UDTSocket(UDPEndPoint endpoint, UDTSession session)throws SocketException,UnknownHostException{
+	UDTSocket(UDPMultiplexer endpoint, UDTSession session)throws SocketException,UnknownHostException{
             super();
 		this.endpoint=endpoint;
 		this.session=session;
@@ -105,7 +105,7 @@ public class UDTSocket extends Socket{
         public UDTSocket(InetAddress host, int port ) throws SocketException,
                 UnknownHostException{
             super();
-            this.endpoint = UDPEndPoint.get(host, port);
+            this.endpoint = UDPMultiplexer.get(host, port);
             this.session = null;
             this.receiver = null;
             this.sender = null;
@@ -193,7 +193,7 @@ public class UDTSocket extends Socket{
             if (boundSockets.contains(bindpoint)) throw 
                     new IOException("A socket is already bound to this address");
         }
-        endpoint = UDPEndPoint.get(bindpoint);
+        endpoint = UDPMultiplexer.get(bindpoint);
         if (endpoint == null) throw new SocketException("Failed to bind to UDPEndPoint");
 	bound = true;
     }
@@ -517,7 +517,7 @@ public class UDTSocket extends Socket{
 		return active;
 	}
 
-	public UDPEndPoint getEndpoint() {
+	public UDPMultiplexer getEndpoint() {
 		return endpoint;
 	}
 

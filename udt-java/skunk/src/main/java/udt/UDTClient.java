@@ -48,23 +48,23 @@ import udt.util.UDTStatistics;
 public class UDTClient {
 
 	private static final Logger logger=Logger.getLogger(UDTClient.class.getName());
-	private final UDPEndPoint clientEndpoint;
+	private final UDPMultiplexer clientEndpoint;
 	private ClientSession clientSession;
 
 
 	public UDTClient(InetAddress address, int localport)throws SocketException, UnknownHostException{
 		//create endpoint
-		clientEndpoint= UDPEndPoint.get(address,localport);
+		clientEndpoint= UDPMultiplexer.get(address,localport);
 		logger.info("Created client endpoint on port "+localport);
 	}
 
 	public UDTClient(InetAddress address)throws SocketException, UnknownHostException{
 		//create endpoint
-		clientEndpoint= UDPEndPoint.get(address, 0);
+		clientEndpoint= UDPMultiplexer.get(address, 0);
 		logger.info("Created client endpoint on port "+clientEndpoint.getLocalPort());
 	}
 
-	public UDTClient(UDPEndPoint endpoint)throws SocketException, UnknownHostException{
+	public UDTClient(UDPMultiplexer endpoint)throws SocketException, UnknownHostException{
 		clientEndpoint=endpoint;
 	}
 
@@ -153,7 +153,7 @@ public class UDTClient {
 		return clientSession.getSocket().getOutputStream();
 	}
 
-	public UDPEndPoint getEndpoint()throws IOException{
+	public UDPMultiplexer getEndpoint()throws IOException{
 		return clientEndpoint;
 	}
 

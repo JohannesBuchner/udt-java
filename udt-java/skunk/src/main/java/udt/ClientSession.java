@@ -50,9 +50,9 @@ public class ClientSession extends UDTSession {
 
 	private static final Logger logger=Logger.getLogger(ClientSession.class.getName());
 
-	private UDPEndPoint endPoint;
+	private UDPMultiplexer endPoint;
 
-	public ClientSession(UDPEndPoint endPoint, UDTSocketAddress dest)throws SocketException{
+	public ClientSession(UDPMultiplexer endPoint, UDTSocketAddress dest)throws SocketException{
 		super("ClientSession localPort="+endPoint.getLocalPort(),dest);
 		this.endPoint=endPoint;
 		logger.info("Created "+toString());

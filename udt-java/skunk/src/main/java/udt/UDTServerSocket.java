@@ -48,7 +48,7 @@ import java.util.logging.Logger;
 public class UDTServerSocket extends ServerSocket {
 	private static final Logger logger=Logger.getLogger(UDTClient.class.getName());
 	
-    private volatile UDPEndPoint endpoint;
+    private volatile UDPMultiplexer endpoint;
     private volatile InetAddress localAdd;
     private volatile int locPort;
     private volatile SocketAddress localSocketAddress;
@@ -64,7 +64,7 @@ public class UDTServerSocket extends ServerSocket {
 	 */
     public UDTServerSocket(InetAddress localAddress, int port)throws UnknownHostException, IOException{
         super();
-        endpoint= UDPEndPoint.get(localAddress,port);
+        endpoint= UDPMultiplexer.get(localAddress,port);
         localAdd = localAddress;
         locPort = port;
         bound = true;
@@ -105,7 +105,7 @@ public class UDTServerSocket extends ServerSocket {
             throw new IOException("UDTSession was null");
     } 
 	
-    public UDPEndPoint getEndpoint(){
+    public UDPMultiplexer getEndpoint(){
             return endpoint;
     }
         

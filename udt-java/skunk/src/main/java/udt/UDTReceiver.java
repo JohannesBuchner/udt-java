@@ -67,7 +67,7 @@ public class UDTReceiver {
 
 	private static final Logger logger=Logger.getLogger(UDTReceiver.class.getName());
 
-	private final UDPEndPoint endpoint;
+	private final UDPMultiplexer endpoint;
 
 	private final UDTSession session;
 
@@ -159,7 +159,7 @@ public class UDTReceiver {
 	 * create a receiver with a valid {@link UDTSession}
 	 * @param session
 	 */
-	public UDTReceiver(UDTSession session,UDPEndPoint endpoint){
+	public UDTReceiver(UDTSession session,UDPMultiplexer endpoint){
 		this.endpoint = endpoint;
 		this.session=session;
 		this.sessionUpSince=System.currentTimeMillis();

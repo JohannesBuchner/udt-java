@@ -175,7 +175,7 @@ public class UDTCongestionControl implements CongestionControl {
 		statistics.setSendPeriod(packetSendingPeriod);
 	}
 
-	private final long PS=UDPEndPoint.DATAGRAM_SIZE;
+	private final long PS=UDPMultiplexer.DATAGRAM_SIZE;
 	private final double BetaDivPS=0.0000015/PS;
 
 	//see spec page 16
@@ -184,7 +184,7 @@ public class UDTCongestionControl implements CongestionControl {
 		double remaining=estimatedLinkCapacity-1000000.0/packetSendingPeriod;
 
 		if(remaining<=0){
-			return 1.0/UDPEndPoint.DATAGRAM_SIZE;
+			return 1.0/UDPMultiplexer.DATAGRAM_SIZE;
 		}
 		else{
 			double exp=Math.ceil(Math.log10(remaining*PS*8));

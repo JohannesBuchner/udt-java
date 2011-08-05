@@ -67,7 +67,7 @@ public class UDTSender {
 
 	private static final Logger logger=Logger.getLogger(UDTClient.class.getName());
 
-	private final UDPEndPoint endpoint;
+	private final UDPMultiplexer endpoint;
 	private final UDTSession session;
 	private final UDTStatistics statistics;
 
@@ -117,7 +117,7 @@ public class UDTSender {
 	private final boolean storeStatistics;
 	private final int chunksize;
 	
-	public UDTSender(UDTSession session,UDPEndPoint endpoint){
+	public UDTSender(UDTSession session,UDPMultiplexer endpoint){
 		if(!session.isReady())throw new IllegalStateException("UDTSession is not ready.");
 		this.endpoint= endpoint;
 		this.session=session;

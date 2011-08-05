@@ -40,7 +40,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.security.MessageDigest;
 
-import udt.UDPEndPoint;
+import udt.UDPMultiplexer;
 
 /**
  * helper methods 
@@ -150,7 +150,7 @@ public class Util {
 	 * @return the local port that can now be accessed by the client
 	 * @throws IOException
 	 */
-	public static void doHolePunch(UDPEndPoint endpoint,InetAddress client, int clientPort)throws IOException{
+	public static void doHolePunch(UDPMultiplexer endpoint,InetAddress client, int clientPort)throws IOException{
 		DatagramPacket p=new DatagramPacket(new byte[1],1);
 		p.setAddress(client);
 		p.setPort(clientPort);

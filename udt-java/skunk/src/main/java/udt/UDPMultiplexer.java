@@ -67,10 +67,10 @@ import udt.util.ObjectPool;
 import udt.util.UDTThreadFactory;
 
 /**
- * the UDPEndpoint takes care of sending and receiving UDP network packets,
+ * the UDPMultiplexer takes care of sending and receiving UDP network packets,
  * dispatching them to the correct {@link UDTSession}
  */
-public class UDPEndPoint {
+public class UDPMultiplexer {
 
     //class fields
 	private static final Logger logger=Logger.getLogger(ClientSession.class.getName());
@@ -78,12 +78,12 @@ public class UDPEndPoint {
 
     
     //class methods
-    private static final WeakHashMap<SocketAddress, UDPEndPoint> localEndpoints
-            = new WeakHashMap<SocketAddress, UDPEndPoint>();
+    private static final WeakHashMap<SocketAddress, UDPMultiplexer> localEndpoints
+            = new WeakHashMap<SocketAddress, UDPMultiplexer>();
     
-    public static UDPEndPoint get(DatagramSocket socket){
+    public static UDPMultiplexer get(DatagramSocket socket){
         SocketAddress localInetSocketAddress = null;
-        UDPEndPoint result = null;
+        UDPMultiplexer result = null;
         if ( socket.isBound()){
             SocketAddress sa = socket.getLocalSocketAddress();
             if ( sa instanceof InetSocketAddress ){
@@ -99,18 +99,18 @@ public class UDPEndPoint {
         }
         if (result != null) return result;
         try {
-            result = new UDPEndPoint(socket);
+            result = new UDPMultiplexer(socket);
             if (localInetSocketAddress == null){
                 // The DatagramSocket was unbound, it should be bound now.
                 localInetSocketAddress = 
                     new InetSocketAddress(socket.getLocalAddress(), socket.getLocalPort());
             }
         } catch (SocketException ex) {
-            Logger.getLogger(UDPEndPoint.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(UDPMultiplexer.class.getName()).log(Level.SEVERE, null, ex);
         }
         if (result != null){
             synchronized (localEndpoints){
-                UDPEndPoint exists = localEndpoints.get(localInetSocketAddress);
+                UDPMultiplexer exists = localEndpoints.get(localInetSocketAddress);
                 if (exists != null && exists.getSocket().equals(socket)) result = exists;
                 // Only cache if a record doesn't already exist.
                 else if (exists == null) localEndpoints.put(localInetSocketAddress, result);
@@ -121,12 +121,12 @@ public class UDPEndPoint {
     
     
     
-    public static UDPEndPoint get(InetAddress localAddress, int localPort){
+    public static UDPMultiplexer get(InetAddress localAddress, int localPort){
         InetSocketAddress localInetSocketAddress = new InetSocketAddress(localAddress, localPort);
         return get(localInetSocketAddress);
     }
     
-    public static UDPEndPoint get(SocketAddress localSocketAddress){
+    public static UDPMultiplexer get(SocketAddress localSocketAddress){
         InetSocketAddress localInetSocketAddress = null;
         if (localSocketAddress instanceof InetSocketAddress){
             localInetSocketAddress = (InetSocketAddress) localSocketAddress;
@@ -136,13 +136,13 @@ public class UDPEndPoint {
                     new InetSocketAddress(udtSA.getAddress(), udtSA.getPort());
         }
         if (localInetSocketAddress == null) return null;
-        UDPEndPoint result = null;
+        UDPMultiplexer result = null;
         synchronized (localEndpoints){
             result = localEndpoints.get(localInetSocketAddress);
         }
         if (result != null) return result;
         try {
-            result = new UDPEndPoint(localInetSocketAddress);
+            result = new UDPMultiplexer(localInetSocketAddress);
             if (localInetSocketAddress.getPort() == 0 || 
                     localInetSocketAddress.getAddress().isAnyLocalAddress()){
                 // ephemeral port or wildcard address, bind operation is complete.
@@ -156,7 +156,7 @@ public class UDPEndPoint {
         }
         if (result != null){
             synchronized (localEndpoints){
-                UDPEndPoint exists = localEndpoints.get(localInetSocketAddress);
+                UDPMultiplexer exists = localEndpoints.get(localInetSocketAddress);
                 if (exists != null) result = exists;
                 else localEndpoints.put(localInetSocketAddress, result);
             }
@@ -168,7 +168,7 @@ public class UDPEndPoint {
      * Allows a custom endpoint to be added to the pool.
      * @param endpoint 
      */
-    public static void put(UDPEndPoint endpoint){
+    public static void put(UDPMultiplexer endpoint){
         SocketAddress local = endpoint.getSocket().getLocalSocketAddress();
         synchronized (localEndpoints){
             localEndpoints.put(local, endpoint);
@@ -218,7 +218,7 @@ public class UDPEndPoint {
 	 * @param socket -  a UDP datagram socket
      * @throws SocketException  
 	 */
-    protected UDPEndPoint(DatagramSocket socket) throws SocketException{
+    protected UDPMultiplexer(DatagramSocket socket) throws SocketException{
 		this.dgSocket=socket;
             if (!socket.isBound()){
                 socket.bind(null);
@@ -232,7 +232,7 @@ public class UDPEndPoint {
 	 * @throws SocketException
 	 * @throws UnknownHostException
 	 */
-    private UDPEndPoint(InetAddress localAddress)throws SocketException, UnknownHostException{
+    private UDPMultiplexer(InetAddress localAddress)throws SocketException, UnknownHostException{
 		this(localAddress,0);
 	}
 
@@ -243,7 +243,7 @@ public class UDPEndPoint {
 	 * @throws SocketException
 	 * @throws UnknownHostException
 	 */
-    private UDPEndPoint(InetAddress localAddress, int localPort)throws SocketException, UnknownHostException{
+    private UDPMultiplexer(InetAddress localAddress, int localPort)throws SocketException, UnknownHostException{
 		if(localAddress==null){
 			dgSocket=new DatagramSocket(localPort, localAddress);
 		}else{
@@ -255,7 +255,7 @@ public class UDPEndPoint {
 		configureSocket();
 	}
 
-    private UDPEndPoint (InetSocketAddress localSocketAddress) 
+    private UDPMultiplexer (InetSocketAddress localSocketAddress) 
             throws SocketException, UnknownHostException {
         dgSocket = new DatagramSocket(localSocketAddress);
         port = dgSocket.getLocalPort();
@@ -277,7 +277,7 @@ public class UDPEndPoint {
 	 * @throws SocketException
 	 * @throws UnknownHostException
 	 */
-	public UDPEndPoint(int localPort)throws SocketException, UnknownHostException{
+	public UDPMultiplexer(int localPort)throws SocketException, UnknownHostException{
 		this(null,localPort);
 	}
 
@@ -287,7 +287,7 @@ public class UDPEndPoint {
 	 * @throws SocketException
 	 * @throws UnknownHostException
 	 */
-	public UDPEndPoint()throws SocketException, UnknownHostException{
+	public UDPMultiplexer()throws SocketException, UnknownHostException{
 		this(null,0);
 	}
 

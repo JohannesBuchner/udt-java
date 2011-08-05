@@ -91,7 +91,7 @@ public abstract class UDTSession {
 	protected int localPort;
 	
 	
-	public static final int DEFAULT_DATAGRAM_SIZE=UDPEndPoint.DATAGRAM_SIZE;
+	public static final int DEFAULT_DATAGRAM_SIZE=UDPMultiplexer.DATAGRAM_SIZE;
 	
 	/**
 	 * key for a system property defining the CC class to be used
