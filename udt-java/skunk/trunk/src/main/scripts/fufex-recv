@@ -1,0 +1,40 @@
+#!/bin/sh
+
+#
+# helper script for using UDT-Java in UNICORE
+#
+
+#
+#Installation Directory
+#
+dir=`dirname $0`
+if [ "$dir" != "." ]
+then
+  INST=`dirname $dir`
+else
+  pwd | grep -e 'bin$' > /dev/null
+  if [ $? = 0 ]
+  then
+    INST=".."
+  else
+    INST=`dirname $dir`
+  fi
+fi
+
+INST=${INST:-.}
+
+#
+#Alternatively specify the installation dir here
+#
+#INST=
+
+JAVA=java
+
+#location of udt.jar
+CP=$INST/lib/udt*.jar
+
+#memory for the VM
+MEM=-Xmx128m
+
+$JAVA $MEM $OPTS -cp $CP udt.unicore.FufexReceive $*
+
