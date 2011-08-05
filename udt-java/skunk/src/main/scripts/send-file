@@ -1,0 +1,56 @@
+#!/bin/sh
+
+#
+# Start script for the UDT-Java send-file application
+# Usage: send-file <server-port> 
+#                  [--localIP=<local ip>] 
+#                  [--verbose]
+#
+
+#
+#Installation Directory
+#
+dir=`dirname $0`
+if [ "$dir" != "." ]
+then
+  INST=`dirname $dir`
+else
+  pwd | grep -e 'bin$' > /dev/null
+  if [ $? = 0 ]
+  then
+    INST=".."
+  else
+    INST=`dirname $dir`
+  fi
+fi
+
+INST=${INST:-.}
+
+#
+#Alternatively specify the installation dir here
+#
+#INST=
+
+#
+# Alternative CC class
+#
+#OPTS=$OPTS" -Dudt.congestioncontrol.class=udt.cc.SimpleTCP"
+
+#
+# Collect and store some performance data (e.g. throughput)
+# (data will be collected in memory and stored after send finishes
+# to a udtstats-<NNNN>.csv file)
+#OPTS=$OPTS" -Dudt.sender.storeStatistics=true"
+
+
+#which Java command to use
+JAVA=java
+
+#location of udt.jar
+CP=$INST/lib/udt*.jar
+
+#memory for the VM
+MEM=-Xmx128m
+
+$JAVA $MEM $OPTS -cp $CP udt.util.SendFile $*
+
