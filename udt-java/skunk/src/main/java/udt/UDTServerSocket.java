@@ -31,35 +31,48 @@
  *********************************************************************************/
 
 package udt;
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.channels.ServerSocketChannel;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
 
-public class UDTServerSocket {
+public class UDTServerSocket extends ServerSocket {
 	private static final Logger logger=Logger.getLogger(UDTClient.class.getName());
 	
-	private final UDPEndPoint endpoint;
+    private volatile UDPEndPoint endpoint;
+    private volatile InetAddress localAdd;
+    private volatile int locPort;
+    private volatile SocketAddress localSocketAddress;
 	
-	private boolean started=false;
-	
+    private volatile boolean started=false;
+    private volatile boolean bound = false;
 	private volatile boolean shutdown=false;
 	
 	/**
 	 * create a UDT ServerSocket
-	 * @param localAddress
+     * @param localSocketAddress
 	 * @param port - the local port. If 0, an ephemeral port will be chosen
 	 */
-	public UDTServerSocket(InetAddress localAddress, int port)throws SocketException,UnknownHostException{
-		endpoint=new UDPEndPoint(localAddress,port);
+    public UDTServerSocket(InetAddress localAddress, int port)throws UnknownHostException, IOException{
+        super();
+        endpoint= UDPEndPoint.get(localAddress,port);
+        localAdd = localAddress;
+        locPort = port;
+        bound = true;
 		logger.info("Created server endpoint on port "+endpoint.getLocalPort());
 	}
 
 	//starts a server on localhost
-	public UDTServerSocket(int port)throws SocketException,UnknownHostException{
+    public UDTServerSocket(int port)throws IOException,UnknownHostException{
 		this(InetAddress.getLocalHost(),port);
 	}
 	
@@ -68,13 +81,16 @@ public class UDTServerSocket {
 	 * for the new connection
 	 * @return
 	 */
-	public synchronized UDTSocket accept()throws InterruptedException{
+@Override
+    public synchronized Socket accept() throws IOException{
 		if(!started){
 			endpoint.start(true);
 			started=true;
 		}
+        // TODO: use a blocking queue.
 		while(!shutdown){
-			UDTSession session=endpoint.accept(10000, TimeUnit.MILLISECONDS);
+            try {
+                UDTSession session = endpoint.accept(10000, TimeUnit.MILLISECONDS, null);
 			if(session!=null){
 				//wait for handshake to complete
 				while(!session.isReady() || session.getSocket()==null){
@@ -82,16 +98,107 @@ public class UDTServerSocket {
 				}
 				return session.getSocket();
 			}
+            } catch (InterruptedException ex) {
+                throw new IOException(ex);
 		}
-		throw new InterruptedException();
 	} 
+            throw new IOException("UDTSession was null");
+    } 
 	
-	public void shutDown(){
+    public UDPEndPoint getEndpoint(){
+            return endpoint;
+    }
+        
+    @Override
+    public void bind(SocketAddress endpoint){
+        //TODO: Implement ServerSocket.bind
+    }
+    
+    @Override
+    public void bind(SocketAddress endpoint, int timeout){
+        //TODO: Implement ServerSocket.bind
+    }
+    
+    @Override
+    public void close(){
 		shutdown=true;
+        // TODO: The endpoint might have other ServerSocket's listening, 
+        // we need to pass the endpoint the socket, or session or something
+        // the endpoint should only stop when it has no remaining sessions.
 		endpoint.stop();
 	}
 	
-	public UDPEndPoint getEndpoint(){
-		return endpoint;
+    @Override
+    public ServerSocketChannel getChannel(){
+        return null;
 	}
+    
+    @Override
+    public InetAddress getInetAddress(){
+        return localAdd;
+}
+    
+    @Override
+    public int getLocalPort(){
+        return locPort;
+    }
+    
+    @Override
+    public SocketAddress getLocalSocketAddress(){
+        return localSocketAddress;
+    }
+    
+    @Override
+    public int getReceiveBufferSize(){
+        return 0;
+    }
+    
+    @Override
+    public boolean getReuseAddress(){
+        return false;
+    }
+    
+    @Override
+    public int getSoTimeout(){
+        return 0;
+    }
+    
+    @Override
+    public boolean isBound(){
+        return started;
+    }
+    
+    @Override
+    public boolean isClosed(){
+        return shutdown;
+    }
+    
+    @Override
+    public void setPerformancePreferences(int connectionTime, int latency, int bandwidth){
+        
+    }
+    
+    @Override
+    public void setReceiveBufferSize(int size){
+        
+    }
+    
+    @Override
+    public void setReuseAddress(boolean on){
+        
+    }
+    
+    @Override
+    public void setSoTimeout(int timeout){
+        
+    }
+    
+    @Override
+    public String toString(){
+        StringBuilder sb = new StringBuilder(120);
+        sb.append("UDTServerSocket: \n");
+        //TODO: add statistics.
+        return sb.toString();
+    }
+    
 }

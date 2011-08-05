@@ -45,13 +45,13 @@ public class PacketFactory {
 	public static UDTPacket createPacket(byte[]encodedData){
 		boolean isControl=(encodedData[0]&128) !=0 ;
 		if(isControl)return createControlPacket(encodedData,encodedData.length);
-		return new DataPacket(encodedData);
+		return DataPacket.create(encodedData);
 	}
 	
 	public static UDTPacket createPacket(byte[]encodedData,int length){
 		boolean isControl=(encodedData[0]&128) !=0 ;
 		if(isControl)return createControlPacket(encodedData,length);
-		return new DataPacket(encodedData,length);
+		return DataPacket.create(encodedData,length);
 	}
 	
 	/**

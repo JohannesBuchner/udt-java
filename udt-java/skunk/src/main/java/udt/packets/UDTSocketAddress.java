@@ -33,19 +33,36 @@
 package udt.packets;
 
 import java.net.InetAddress;
+import java.net.SocketAddress;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
 
-public class Destination {
+public class UDTSocketAddress extends SocketAddress {
+    private static final long serialVersionUID = 1L;
 
 	private final int port;
 
 	private final InetAddress address;
 	
 	//UDT socket ID of the peer
-	private long socketID;
+	private int socketID;
 	
-	public Destination(InetAddress address, int port){
+        /**
+         * Wild card InetAddress or an ephemeral port of 0 may be used.
+         * A socketID of 0 is also considered ephemeral, in that the 
+         * implementation will assign the next available socketID.
+         * 
+         * For this reason, the UDTSocket should always be asked for
+         * its SocketAddress, it should never be assumed that it hasn't changed.
+         * 
+         * @param address
+         * @param port
+         * @param socketID 
+         */
+	public UDTSocketAddress(InetAddress address, int port, int socketID){
 		this.address=address;
 		this.port=port;
+                this.socketID=socketID;
 	}
 	
 	public InetAddress getAddress(){
@@ -56,16 +73,16 @@ public class Destination {
 		return port;
 	}
 	
-	public long getSocketID() {
+	public int getSocketID() {
 		return socketID;
 	}
 
-	public void setSocketID(long socketID) {
+	public void setSocketID(int socketID) {
 		this.socketID = socketID;
 	}
 
 	public String toString(){
-		return("Destination ["+address.getHostName()+" port="+port+" socketID="+socketID)+"]";
+		return("UDTSocketAddress ["+address.getHostName()+" port="+port+" socketID="+socketID)+"]";
 	} 
 
 	@Override
@@ -86,7 +103,7 @@ public class Destination {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		Destination other = (Destination) obj;
+		UDTSocketAddress other = (UDTSocketAddress) obj;
 		if (address == null) {
 			if (other.address != null)
 				return false;

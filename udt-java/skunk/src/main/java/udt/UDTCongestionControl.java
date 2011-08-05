@@ -65,7 +65,7 @@ public class UDTCongestionControl implements CongestionControl {
 	public UDTCongestionControl(UDTSession session){
 		this.session=session;
 		this.statistics=session.getStatistics();
-		lastDecreaseSeqNo=session.getInitialSequenceNumber()-1;
+		lastDecreaseSeqNo=session.getCurrentSequenceNumber()-1;
 	}
 
 	/* (non-Javadoc)

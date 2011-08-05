@@ -1,7 +1,10 @@
 package udt.performance;
 
 import java.io.File;
+import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.security.MessageDigest;
 import java.text.NumberFormat;
 import java.util.Random;
@@ -9,10 +12,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import udt.UDTClient;
-import udt.UDTInputStream;
 import udt.UDTReceiver;
 import udt.UDTServerSocket;
-import udt.UDTSocket;
 import udt.UDTTestBase;
 import udt.util.Util;
 
@@ -107,7 +108,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	
 	private void runServer()throws Exception{
 		
-		final UDTServerSocket serverSocket=new UDTServerSocket(InetAddress.getByName("localhost"),65321);
+		final ServerSocket serverSocket=new UDTServerSocket(InetAddress.getByName("localhost"),65321);
 		
 		Runnable serverProcess=new Runnable(){
 			public void run(){
@@ -119,10 +120,10 @@ public class TestUDTLargeData extends UDTTestBase{
 					}
 					MessageDigest md5=MessageDigest.getInstance("MD5");
 					long start=System.currentTimeMillis();
-					UDTSocket s=serverSocket.accept();
+					Socket s=serverSocket.accept();
 					serverStarted=true;
 					assertNotNull(s);
-					UDTInputStream is=s.getInputStream();
+					InputStream is=s.getInputStream();
 					byte[]buf=new byte[READ_BUFFERSIZE];
 					int c=0;
 					while(true){
@@ -137,8 +138,8 @@ public class TestUDTLargeData extends UDTTestBase{
 					System.out.println("Server thread exiting, last received bytes: "+c);
 					serverRunning=false;
 					md5_received=Util.hexString(md5);
-					serverSocket.shutDown();
-					System.out.println(s.getSession().getStatistics());
+					serverSocket.close();
+					System.out.println(s.toString());
 				}
 				catch(Exception e){
 					e.printStackTrace();

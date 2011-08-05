@@ -6,6 +6,7 @@ import java.net.InetAddress;
 
 import junit.framework.TestCase;
 import udt.UDTClient;
+import udt.UDTInputStream;
 import udt.util.Util;
 
 public class TestEchoServer extends TestCase {
@@ -20,7 +21,8 @@ public class TestEchoServer extends TestCase {
 		pw.println("test");
 		pw.flush();
 		System.out.println("Message sent.");
-		client.getInputStream().setBlocking(false);
+                // TODO: Need to change UDTInputStream to use wait(timeout)
+		((UDTInputStream) client.getInputStream()).setBlocking(false);
 		String line=Util.readLine(client.getInputStream());
 		assertNotNull(line);
 		System.out.println(line);

@@ -33,13 +33,15 @@
 package udt;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import udt.packets.Destination;
+import udt.packets.UDTSocketAddress;
 import udt.packets.Shutdown;
 import udt.util.UDTStatistics;
 
@@ -52,13 +54,13 @@ public class UDTClient {
 
 	public UDTClient(InetAddress address, int localport)throws SocketException, UnknownHostException{
 		//create endpoint
-		clientEndpoint=new UDPEndPoint(address,localport);
+		clientEndpoint= UDPEndPoint.get(address,localport);
 		logger.info("Created client endpoint on port "+localport);
 	}
 
 	public UDTClient(InetAddress address)throws SocketException, UnknownHostException{
 		//create endpoint
-		clientEndpoint=new UDPEndPoint(address);
+		clientEndpoint= UDPEndPoint.get(address, 0);
 		logger.info("Created client endpoint on port "+clientEndpoint.getLocalPort());
 	}
 
@@ -75,7 +77,7 @@ public class UDTClient {
 	 */
 	public void connect(String host, int port)throws InterruptedException, UnknownHostException, IOException{
 		InetAddress address=InetAddress.getByName(host);
-		Destination destination=new Destination(address,port);
+		UDTSocketAddress destination= new UDTSocketAddress(address,port,0);
 		//create client session...
 		clientSession=new ClientSession(clientEndpoint,destination);
 		clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
@@ -101,7 +103,7 @@ public class UDTClient {
 	}
 
 	/**
-	 * sends the given data and waits for acknowledgement
+	 * sends the given data and waits for acknowledgment
 	 * @param data - the data to send
 	 * @throws IOException
 	 * @throws InterruptedException if interrupted while waiting for ack
@@ -143,11 +145,11 @@ public class UDTClient {
 		}
 	}
 
-	public UDTInputStream getInputStream()throws IOException{
+	public InputStream getInputStream()throws IOException{
 		return clientSession.getSocket().getInputStream();
 	}
 
-	public UDTOutputStream getOutputStream()throws IOException{
+	public OutputStream getOutputStream()throws IOException{
 		return clientSession.getSocket().getOutputStream();
 	}
 

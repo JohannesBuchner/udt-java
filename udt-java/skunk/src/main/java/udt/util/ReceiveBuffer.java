@@ -22,10 +22,10 @@ public class ReceiveBuffer {
 	private volatile int readPosition=0;
 
 	//the lowest sequence number stored in this buffer
-	private final long initialSequenceNumber;
+	private final int initialSequenceNumber;
 
 	//the highest sequence number already read by the application
-	private long highestReadSequenceNumber;
+	private int highestReadSequenceNumber;
 
 	//number of chunks
 	private final AtomicInteger numValidChunks=new AtomicInteger(0);
@@ -37,7 +37,7 @@ public class ReceiveBuffer {
 	//the size of the buffer
 	private final int size;
 
-	public ReceiveBuffer(int size, long initialSequenceNumber){
+	public ReceiveBuffer(int size, int initialSequenceNumber){
 		this.size=size;
 		this.buffer=new AppData[size];
 		this.initialSequenceNumber=initialSequenceNumber;
@@ -116,7 +116,7 @@ public class ReceiveBuffer {
 			long thisSeq=r.getSequenceNumber();
 			if(1==SequenceNumber.seqOffset(highestReadSequenceNumber,thisSeq)){
 				increment();
-				highestReadSequenceNumber=thisSeq;
+				highestReadSequenceNumber=(int) thisSeq;
 			}
 			else return null;
 		}

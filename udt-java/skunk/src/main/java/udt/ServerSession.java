@@ -40,7 +40,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import udt.packets.ConnectionHandshake;
-import udt.packets.Destination;
+import udt.packets.UDTSocketAddress;
 import udt.packets.KeepAlive;
 import udt.packets.Shutdown;
 
@@ -57,7 +57,7 @@ public class ServerSession extends UDTSession {
 	private UDTPacket lastPacket;
 
 	public ServerSession(DatagramPacket dp, UDPEndPoint endPoint)throws SocketException,UnknownHostException{
-		super("ServerSession localPort="+endPoint.getLocalPort()+" peer="+dp.getAddress()+":"+dp.getPort(),new Destination(dp.getAddress(),dp.getPort()));
+		super("ServerSession localPort="+endPoint.getLocalPort()+" peer="+dp.getAddress()+":"+dp.getPort(),new UDTSocketAddress(dp.getAddress(),dp.getPort(),0));
 		this.endPoint=endPoint;
 		logger.info("Created "+toString()+" talking to "+dp.getAddress()+":"+dp.getPort());
 	}
@@ -65,7 +65,7 @@ public class ServerSession extends UDTSession {
 	int n_handshake=0;
 
 	@Override
-	public void received(UDTPacket packet, Destination peer){
+	public void received(UDTPacket packet, UDTSocketAddress peer){
 		lastPacket=packet;
 
 		if(packet instanceof ConnectionHandshake) {
@@ -83,7 +83,9 @@ public class ServerSession extends UDTSession {
 					n_handshake++;
 					try{
 						setState(ready);
+                                                if (socket == null){
 						socket=new UDTSocket(endPoint, this);
+                                                }
 						cc.init();
 					}catch(Exception uhe){
 						//session is invalid
@@ -166,7 +168,7 @@ public class ServerSession extends UDTSession {
 		long clientBufferSize=handshake.getPacketSize();
 		long myBufferSize=getDatagramSize();
 		long bufferSize=Math.min(clientBufferSize, myBufferSize);
-		long initialSequenceNumber=handshake.getInitialSeqNo();
+		int initialSequenceNumber=(int) handshake.getInitialSeqNo();
 		setInitialSequenceNumber(initialSequenceNumber);
 		setDatagramSize((int)bufferSize);
 		responseHandshake.setPacketSize(bufferSize);

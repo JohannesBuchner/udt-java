@@ -169,7 +169,7 @@ public class UDTReceiver {
 		packetHistoryWindow = new PacketHistoryWindow(16);
 		receiverLossList = new ReceiverLossList();
 		packetPairWindow = new PacketPairWindow(16);
-		largestReceivedSeqNumber=session.getInitialSequenceNumber()-1;
+		largestReceivedSeqNumber=session.getCurrentSequenceNumber()-1;
 		bufferSize=session.getReceiveBufferSize();
 		handoffQueue=new ArrayBlockingQueue<UDTPacket>(4*session.getFlowWindowSize());
 		storeStatistics=Boolean.getBoolean("udt.receiver.storeStatistics");
@@ -396,7 +396,7 @@ public class UDTReceiver {
 //				return;
 //			}
 //		//}
-		boolean OK=session.getSocket().getInputStream().haveNewData(currentSequenceNumber,dp.getData());
+		boolean OK= ((UDTInputStream) session.getSocket().getInputStream()).haveNewData(currentSequenceNumber,dp.getData());
 		if(!OK){
 			//need to drop packet...
 			return;

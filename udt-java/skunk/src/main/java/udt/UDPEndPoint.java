@@ -36,20 +36,34 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.WeakHashMap;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import udt.packets.ConnectionHandshake;
-import udt.packets.Destination;
+import udt.packets.UDTSocketAddress;
 import udt.packets.PacketFactory;
+import udt.util.ObjectPool;
 import udt.util.UDTThreadFactory;
 
 /**
@@ -58,14 +72,116 @@ import udt.util.UDTThreadFactory;
  */
 public class UDPEndPoint {
 
+    //class fields
 	private static final Logger logger=Logger.getLogger(ClientSession.class.getName());
+    public static final int DATAGRAM_SIZE=1400;
 
+    
+    //class methods
+    private static final WeakHashMap<SocketAddress, UDPEndPoint> localEndpoints
+            = new WeakHashMap<SocketAddress, UDPEndPoint>();
+    
+    public static UDPEndPoint get(DatagramSocket socket){
+        SocketAddress localInetSocketAddress = null;
+        UDPEndPoint result = null;
+        if ( socket.isBound()){
+            SocketAddress sa = socket.getLocalSocketAddress();
+            if ( sa instanceof InetSocketAddress ){
+                localInetSocketAddress = (InetSocketAddress) sa;
+            } else {
+                // Must be a special DatagramSocket impl or extended.
+                localInetSocketAddress = 
+                    new InetSocketAddress(socket.getLocalAddress(), socket.getLocalPort());
+            }
+            synchronized (localEndpoints){
+                result = localEndpoints.get(localInetSocketAddress);
+            }
+        }
+        if (result != null) return result;
+        try {
+            result = new UDPEndPoint(socket);
+            if (localInetSocketAddress == null){
+                // The DatagramSocket was unbound, it should be bound now.
+                localInetSocketAddress = 
+                    new InetSocketAddress(socket.getLocalAddress(), socket.getLocalPort());
+            }
+        } catch (SocketException ex) {
+            Logger.getLogger(UDPEndPoint.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        if (result != null){
+            synchronized (localEndpoints){
+                UDPEndPoint exists = localEndpoints.get(localInetSocketAddress);
+                if (exists != null && exists.getSocket().equals(socket)) result = exists;
+                // Only cache if a record doesn't already exist.
+                else if (exists == null) localEndpoints.put(localInetSocketAddress, result);
+            }
+        }
+        return result; // may be null.           
+    }
+    
+    
+    
+    public static UDPEndPoint get(InetAddress localAddress, int localPort){
+        InetSocketAddress localInetSocketAddress = new InetSocketAddress(localAddress, localPort);
+        return get(localInetSocketAddress);
+    }
+    
+    public static UDPEndPoint get(SocketAddress localSocketAddress){
+        InetSocketAddress localInetSocketAddress = null;
+        if (localSocketAddress instanceof InetSocketAddress){
+            localInetSocketAddress = (InetSocketAddress) localSocketAddress;
+        } else if (localSocketAddress instanceof UDTSocketAddress){
+            UDTSocketAddress udtSA = (UDTSocketAddress) localSocketAddress;
+            localInetSocketAddress = 
+                    new InetSocketAddress(udtSA.getAddress(), udtSA.getPort());
+        }
+        if (localInetSocketAddress == null) return null;
+        UDPEndPoint result = null;
+        synchronized (localEndpoints){
+            result = localEndpoints.get(localInetSocketAddress);
+        }
+        if (result != null) return result;
+        try {
+            result = new UDPEndPoint(localInetSocketAddress);
+            if (localInetSocketAddress.getPort() == 0 || 
+                    localInetSocketAddress.getAddress().isAnyLocalAddress()){
+                // ephemeral port or wildcard address, bind operation is complete.
+                localInetSocketAddress = 
+                        new InetSocketAddress(result.getLocalAddress(), result.getLocalPort());
+            }
+        } catch (SocketException ex) {
+            logger.log(Level.SEVERE, null, ex);
+        } catch (UnknownHostException ex) {
+            logger.log(Level.SEVERE, null, ex);
+        }
+        if (result != null){
+            synchronized (localEndpoints){
+                UDPEndPoint exists = localEndpoints.get(localInetSocketAddress);
+                if (exists != null) result = exists;
+                else localEndpoints.put(localInetSocketAddress, result);
+            }
+        }
+        return result; // may be null.      
+    }
+    
+    /**
+     * Allows a custom endpoint to be added to the pool.
+     * @param endpoint 
+     */
+    public static void put(UDPEndPoint endpoint){
+        SocketAddress local = endpoint.getSocket().getLocalSocketAddress();
+        synchronized (localEndpoints){
+            localEndpoints.put(local, endpoint);
+        }
+    }
+    
+    //object fields
 	private final int port;
 
 	private final DatagramSocket dgSocket;
 
 	//active sessions keyed by socket ID
-	private final Map<Long,UDTSession>sessions=new ConcurrentHashMap<Long, UDTSession>();
+    private final Map<Integer,UDTSession>sessions=new ConcurrentHashMap<Integer, UDTSession>();
 
 	//last received packet
 	private UDTPacket lastPacket;
@@ -74,20 +190,39 @@ public class UDPEndPoint {
 	//this queue is used to handoff new UDTSessions to the application
 	private final SynchronousQueue<UDTSession> sessionHandoff=new SynchronousQueue<UDTSession>();
 	
+    private final ObjectPool<BlockingQueue<UDTSession>> queuePool 
+            = new ObjectPool<BlockingQueue<UDTSession>>(20);
+    
+    private final ConcurrentMap<Integer, BlockingQueue<UDTSession>> handoff
+            = new ConcurrentHashMap<Integer, BlockingQueue<UDTSession>>(120);
+    
+    // registered sockets
+    private final Set<Integer> registeredSockets = new HashSet<Integer>(120);
+    // registered sockets lock
+    private final ReadWriteLock rwl = new ReentrantReadWriteLock();
+    private final Lock readSocketLock = rwl.readLock();
+    private final Lock writeSocketLock = rwl.writeLock();
+    
+    
 	private boolean serverSocketMode=false;
 
 	//has the endpoint been stopped?
 	private volatile boolean stopped=false;
 
-	public static final int DATAGRAM_SIZE=1400;
+    private final AtomicInteger nextSocketID=new AtomicInteger(20+new Random().nextInt(5000));
+
 
 	/**
 	 * create an endpoint on the given socket
 	 * 
 	 * @param socket -  a UDP datagram socket
+     * @throws SocketException  
 	 */
-	public UDPEndPoint(DatagramSocket socket){
+    protected UDPEndPoint(DatagramSocket socket) throws SocketException{
 		this.dgSocket=socket;
+            if (!socket.isBound()){
+                socket.bind(null);
+            }
 		port=dgSocket.getLocalPort();
 	}
 	
@@ -97,7 +232,7 @@ public class UDPEndPoint {
 	 * @throws SocketException
 	 * @throws UnknownHostException
 	 */
-	public UDPEndPoint(InetAddress localAddress)throws SocketException, UnknownHostException{
+    private UDPEndPoint(InetAddress localAddress)throws SocketException, UnknownHostException{
 		this(localAddress,0);
 	}
 
@@ -108,7 +243,7 @@ public class UDPEndPoint {
 	 * @throws SocketException
 	 * @throws UnknownHostException
 	 */
-	public UDPEndPoint(InetAddress localAddress, int localPort)throws SocketException, UnknownHostException{
+    private UDPEndPoint(InetAddress localAddress, int localPort)throws SocketException, UnknownHostException{
 		if(localAddress==null){
 			dgSocket=new DatagramSocket(localPort, localAddress);
 		}else{
@@ -119,6 +254,13 @@ public class UDPEndPoint {
 		
 		configureSocket();
 	}
+
+    private UDPEndPoint (InetSocketAddress localSocketAddress) 
+            throws SocketException, UnknownHostException {
+        dgSocket = new DatagramSocket(localSocketAddress);
+        port = dgSocket.getLocalPort();
+        configureSocket();
+    }
 
 	protected void configureSocket()throws SocketException{
 		//set a time out to avoid blocking in doReceive()
@@ -184,6 +326,43 @@ public class UDPEndPoint {
 	}
 
 	/**
+     * Provides assistance to a socket to determine a random socket id,
+     * every caller receives a unique value.  This value is unique at the
+     * time of calling, however it may not be at registration time.
+     * 
+     * This socketID has not been registered, all socket ID's must be 
+     * registered or connection will fail.
+     * @return
+     */
+    public int getUniqueSocketID(){
+        Integer socketID = nextSocketID.getAndIncrement();
+        try{
+            readSocketLock.lock();
+            while (registeredSockets.contains(socketID)){
+                socketID = nextSocketID.getAndIncrement();
+            }
+            return socketID; // should we register it?
+        } finally {
+            readSocketLock.unlock();
+        }
+    }
+    
+    void registerSocketID(int socketID, UDTSocket socket) throws SocketException {
+        if (!equals(socket.getEndpoint())) throw new SocketException (
+                "Socket doesn't originate for this endpoint: "
+                + socket.toString());
+        try {
+            writeSocketLock.lock();
+            if (registeredSockets.contains(socketID)){
+                throw new SocketException("Already registered, Socket ID: " +socketID);
+            }
+            registeredSockets.add(socketID);
+        }finally{
+            writeSocketLock.unlock();
+        }
+    }
+
+    /**
 	 * @return the port which this client is bound to
 	 */
 	public int getLocalPort() {
@@ -204,8 +383,8 @@ public class UDPEndPoint {
 		return lastPacket;
 	}
 
-	public void addSession(Long destinationID,UDTSession session){
-		logger.info("Storing session <"+destinationID+">");
+    public void addSession(Integer destinationID,UDTSession session){
+            logger.log(Level.INFO, "Storing session <{0}>", destinationID);
 		sessions.put(destinationID, session);
 	}
 
@@ -221,12 +400,33 @@ public class UDPEndPoint {
 	 * wait the given time for a new connection
 	 * @param timeout - the time to wait
 	 * @param unit - the {@link TimeUnit}
+     * @param socketID - the socket id.
 	 * @return a new {@link UDTSession}
 	 * @throws InterruptedException
 	 */
-	protected UDTSession accept(long timeout, TimeUnit unit)throws InterruptedException{
-		return sessionHandoff.poll(timeout, unit);
+    protected UDTSession accept(long timeout, TimeUnit unit, Integer socketID)throws InterruptedException{
+            //return sessionHandoff.poll(timeout, unit);
+            BlockingQueue<UDTSession> session = handoff.get(socketID);
+            try {
+                if (session == null){
+                    session = queuePool.get();
+                    if (session == null) {
+                        session = new ArrayBlockingQueue<UDTSession>(1);
 	}
+                    BlockingQueue<UDTSession> existed = handoff.putIfAbsent(socketID,session);
+                    if (existed != null){
+                        session = existed;
+                    }
+                }
+                return session.poll(timeout, unit);
+            } finally {
+                boolean removed = handoff.remove(socketID, session);
+                if (removed){
+                    session.clear();
+                    queuePool.accept(session);
+                }
+            }
+    }
 
 
 	final DatagramPacket dp= new DatagramPacket(new byte[DATAGRAM_SIZE],DATAGRAM_SIZE);
@@ -250,32 +450,42 @@ public class UDPEndPoint {
 	protected void doReceive()throws IOException{
 		while(!stopped){
 			try{
-				try{
-					
 					//will block until a packet is received or timeout has expired
 					dgSocket.receive(dp);
-					
-					Destination peer=new Destination(dp.getAddress(), dp.getPort());
+                UDTSocketAddress peer= null;
 					int l=dp.getLength();
 					UDTPacket packet=PacketFactory.createPacket(dp.getData(),l);
 					lastPacket=packet;
-
 					//handle connection handshake 
 					if(packet.isConnectionHandshake()){
 						synchronized(lock){
 							Long id=Long.valueOf(packet.getDestinationID());
 							UDTSession session=sessions.get(id);
-							if(session==null){
+                        if(session==null){ // What about DOS?
 								session=new ServerSession(dp,this);
 								addSession(session.getSocketID(),session);
 								//TODO need to check peer to avoid duplicate server session
 								if(serverSocketMode){
 									logger.fine("Pooling new request.");
-									sessionHandoff.put(session);
+//                                sessionHandoff.put(session); // blocking method, what about offer?
+                                BlockingQueue<UDTSession> queue = handoff.get(session.getSocketID());
+                                if (queue != null){
+                                    boolean success = queue.offer(session);
+                                    if (success){
 									logger.fine("Request taken for processing.");
+                                    } else {
+                                        logger.fine("Request discarded, queue full.");
 								}
+                                } else {
+                                    logger.fine("No ServerSocket listening at socketID: "
+                                            + session.getSocketID() 
+                                            + "to answer request");
 							}
+                            }
+                        }
 							peer.setSocketID(((ConnectionHandshake)packet).getSocketID());
+                        peer = new UDTSocketAddress(dp.getAddress(), dp.getPort(), 
+                                ((ConnectionHandshake)packet).getSocketID());
 							session.received(packet,peer);
 						}
 					}
@@ -294,7 +504,9 @@ public class UDPEndPoint {
 						if(session==null){
 							n++;
 							if(n%100==1){
-								logger.warning("Unknown session <"+dest+"> requested from <"+peer+"> packet type "+packet.getClass().getName());
+                            logger.warning("Unknown session <"+dest
+                                    +"> requested from <"+peer+"> packet type "
+                                    +packet.getClass().getName());
 							}
 						}
 						else{
@@ -305,8 +517,6 @@ public class UDPEndPoint {
 					logger.log(Level.INFO, "SocketException: "+ex.getMessage());
 				}catch(SocketTimeoutException ste){
 					//can safely ignore... we will retry until the endpoint is stopped
-				}
-
 			}catch(Exception ex){
 				logger.log(Level.WARNING, "Got: "+ex.getMessage(),ex);
 			}

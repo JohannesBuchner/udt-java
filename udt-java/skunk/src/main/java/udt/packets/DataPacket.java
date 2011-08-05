@@ -32,16 +32,73 @@
 
 package udt.packets;
 
+import udt.util.ObjectPool;
+import udt.util.Recycler.Recyclable;
 import udt.UDTPacket;
 import udt.UDTSession;
 
-public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
+public class DataPacket implements UDTPacket, Comparable<UDTPacket>, Recyclable{
+    private static final byte[] emptydata = new byte[0];
+    private static ObjectPool<DataPacket> packetPool = null;
+    /**
+     * Static method which can be used to tune the size of the object
+     * pool for packet recycling.  Must be called prior to all static factory
+     * methods and static discard method.  Default pool size is 40.
+     * 
+     * @param size
+     */
+    private static void initializeObjectPool(int size) {
+        if (packetPool != null) return;
+        packetPool = new ObjectPool<DataPacket>(size);
+
+    }
+    
+    public static DataPacket create(byte[] data, int packetSequenceNumber, 
+            int messageNumber, int timeStamp, UDTSession session){
+        initializeObjectPool(40);
+        DataPacket p = packetPool.get();
+        if ( p == null ) {
+            p = new DataPacket(data, packetSequenceNumber, messageNumber, 
+                timeStamp, session);
+        } else {
+            p.encode(data, packetSequenceNumber, messageNumber, timeStamp, session);
+        }       
+        return p;
+    }
+    
+    public static DataPacket create(byte[] encodedData){
+        initializeObjectPool(40);
+        DataPacket p = packetPool.get();
+        if ( p == null ) {
+            p = new DataPacket(encodedData);
+        } else {
+            p.decode(encodedData, encodedData.length);
+        }       
+        return p;
+    }
+    
+    public static DataPacket create(byte[] encodedData, int length){
+        initializeObjectPool(40);
+        DataPacket p = packetPool.get();
+        if ( p == null ) {
+            p = new DataPacket(encodedData, length);
+        } else {
+            p.decode(encodedData, length);
+        }       
+        return p;
+    }
+    
+    
+    public static void discard(DataPacket p){
+        initializeObjectPool(40);
+        packetPool.accept(p);
+    }
 
 	private byte[] data ;
 	private long packetSequenceNumber;
 	private long messageNumber;
 	private long timeStamp;
-	private long destinationID;
+	private long destinationSocketID;
 
 	private UDTSession session;
 
@@ -49,6 +106,12 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 	
 	public DataPacket(){
 	}
+
+        DataPacket(byte[] data, int packetSequenceNumber, int messageNumber,
+                int timeStamp, UDTSession session){
+            encode(data, packetSequenceNumber, messageNumber, timeStamp, session);
+        }
+        
 
 	/**
 	 * create a DataPacket from the given raw data
@@ -61,19 +124,31 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 
 	public DataPacket(byte[] encodedData, int length){
 		decode(encodedData,length);
-		dataLength=length;
 	}
 	
-	void decode(byte[]encodedData,int length){
+	private void decode(byte[]encodedData,int length){
 		packetSequenceNumber=PacketUtil.decode(encodedData, 0);
 		messageNumber=PacketUtil.decode(encodedData, 4);
 		timeStamp=PacketUtil.decode(encodedData, 8);
-		destinationID=PacketUtil.decode(encodedData, 12);
-		data=new byte[length-16];
-		System.arraycopy(encodedData, 16, data, 0, data.length);
+		destinationSocketID=PacketUtil.decode(encodedData, 12);
+                dataLength=length-16;
+		data=new byte[dataLength];
+		System.arraycopy(encodedData, 16, data, 0, dataLength);
 	}
 
+        private void encode(byte[] data, long packetSequenceNumber, long messageNumber,
+                long timeStamp, UDTSession session){
+            this.data=data;
+            this.dataLength=data.length;
+            this.packetSequenceNumber=packetSequenceNumber;
+            this.messageNumber=messageNumber;
+            this.timeStamp=timeStamp;
+            this.destinationSocketID= (session == null) ? 0L : session.getSocketID();
+            this.session=session;
+        }
 
+        
+        
 	public byte[] getData() {
 		return this.data;
 	}
@@ -109,7 +184,7 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 	}
 
 	public long getDestinationID() {
-		return this.destinationID;
+		return this.destinationSocketID;
 	}
 
 	public long getTimeStamp() {
@@ -117,7 +192,7 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 	}
 
 	public void setDestinationID(long destinationID) {
-		this.destinationID=destinationID;
+		this.destinationSocketID=destinationID;
 	}
 
 	public void setTimeStamp(long timeStamp) {
@@ -133,7 +208,7 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 		System.arraycopy(PacketUtil.encode(packetSequenceNumber), 0, result, 0, 4);
 		System.arraycopy(PacketUtil.encode(messageNumber), 0, result, 4, 4);
 		System.arraycopy(PacketUtil.encode(timeStamp), 0, result, 8, 4);
-		System.arraycopy(PacketUtil.encode(destinationID), 0, result, 12, 4);
+		System.arraycopy(PacketUtil.encode(destinationSocketID), 0, result, 12, 4);
 		System.arraycopy(data, 0, result, 16, dataLength);
 		return result;
 	}
@@ -165,4 +240,14 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 	public int compareTo(UDTPacket other){
 		return (int)(getPacketSequenceNumber()-other.getPacketSequenceNumber());
 	}
+
+    public void recycle() {
+            this.data=emptydata;
+            this.dataLength=0;
+            this.packetSequenceNumber=0;
+            this.messageNumber=0;
+            this.timeStamp=0;
+            this.destinationSocketID=0;
+            this.session=null;
+}
 }

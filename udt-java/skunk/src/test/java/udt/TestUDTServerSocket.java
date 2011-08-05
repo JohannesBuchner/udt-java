@@ -1,8 +1,12 @@
 package udt;
 
+import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.security.MessageDigest;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -10,26 +14,26 @@ import udt.util.Util;
 
 public class TestUDTServerSocket extends UDTTestBase{
 	
-	boolean running=false;
+//	volatile boolean running=false;
 	
-	public int BUFSIZE=1024;
+	public final int BUFSIZE=1024;
 	
-	int num_packets=32;
+	volatile int num_packets=32;
 
-	int TIMEOUT=20000;
+	final int TIMEOUT=20000;
 	
 	public void testWithoutLoss()throws Exception{
 		Logger.getLogger("udt").setLevel(Level.WARNING);
 		UDTReceiver.dropRate=0;
 		num_packets=640;
-		TIMEOUT=Integer.MAX_VALUE;
+//		TIMEOUT=Integer.MAX_VALUE;
 		doTest();
 	}
 
 	//set an artificial loss rate
 	public void testWithLoss()throws Exception{
 		UDTReceiver.dropRate=3;
-		TIMEOUT=Integer.MAX_VALUE;
+//		TIMEOUT=Integer.MAX_VALUE;
 		num_packets=512;
 		//set log level
 		Logger.getLogger("udt").setLevel(Level.WARNING);
@@ -39,7 +43,7 @@ public class TestUDTServerSocket extends UDTTestBase{
 	//send even more data
 	public void testLargeDataSet()throws Exception{
 		UDTReceiver.dropRate=0;
-		TIMEOUT=Integer.MAX_VALUE;
+//		TIMEOUT=Integer.MAX_VALUE;
 		num_packets=3*1024;
 		//set log level
 		Logger.getLogger("udt").setLevel(Level.WARNING);
@@ -48,20 +52,20 @@ public class TestUDTServerSocket extends UDTTestBase{
 	}
 	
 	protected void doTest()throws Exception{
-		if(!running)runServer();
+		if(!serverRunning.get()) runServer();
 		UDTClient client=new UDTClient(InetAddress.getByName("localhost"),12345);
 		client.connect("localhost", 65321);
 		int N=num_packets*32768;
 		byte[]data=new byte[N];
 		new Random().nextBytes(data);
 		
-		while(!serverRunning)Thread.sleep(100);
+		while(!serverRunning.get())Thread.sleep(100);
 		
 		String md5_sent=computeMD5(data);
 		long start=System.currentTimeMillis();
 		System.out.println("Sending data block of <"+N/1024+"> Kbytes.");
 		
-		if(serverRunning){
+		if(serverRunning.get()){
 			client.sendBlocking(data);
 		}else throw new IllegalStateException();
 		
@@ -69,7 +73,7 @@ public class TestUDTServerSocket extends UDTTestBase{
 		System.out.println("Shutdown client.");
 		client.shutdown();
 		
-		while(serverRunning)Thread.sleep(100);
+		while(serverRunning.get())Thread.sleep(100);
 		
 		System.out.println("Done. Sending "+N/1024+" Kbytes took "+(end-start)+" ms");
 		System.out.println("Rate "+N/(end-start)+" Kbytes/sec");
@@ -85,22 +89,24 @@ public class TestUDTServerSocket extends UDTTestBase{
 	
 	long total=0;
 	
-	volatile boolean serverRunning=true;
+	AtomicBoolean serverRunning = new AtomicBoolean(false);
 	
 	volatile String md5_received=null;
 	
 	private void runServer()throws Exception{
+                boolean alreadyRunning = serverRunning.compareAndSet(false, true);
+                if (alreadyRunning) return;
 		final MessageDigest md5=MessageDigest.getInstance("MD5");
 		
-		final UDTServerSocket serverSocket=new UDTServerSocket(InetAddress.getByName("localhost"),65321);
+		final ServerSocket serverSocket=new UDTServerSocket(InetAddress.getByName("localhost"),65321);
 		
 		Runnable serverProcess=new Runnable(){
 			public void run(){
 				try{
 					long start=System.currentTimeMillis();
-					UDTSocket s=serverSocket.accept();
+					Socket s=serverSocket.accept();
 					assertNotNull(s);
-					UDTInputStream is=s.getInputStream();
+					InputStream is=s.getInputStream();
 					//is.setBlocking(false);
 					byte[]buf=new byte[16384];
 					while(true){
@@ -114,15 +120,15 @@ public class TestUDTServerSocket extends UDTTestBase{
 						}
 					}
 					System.out.println("Server thread exiting.");
-					serverRunning=false;
+					serverRunning.set(false);
 					md5_received=Util.hexString(md5);
-					serverSocket.shutDown();
-					System.out.println(s.getSession().getStatistics());
+					serverSocket.close();
+					System.out.println(s.toString());
 				}
 				catch(Exception e){
 					e.printStackTrace();
 					fail();
-					serverRunning=false;
+					serverRunning.set(false);
 				}
 			}
 		};

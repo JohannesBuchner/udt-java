@@ -33,12 +33,16 @@
 package udt;
 
 import java.net.DatagramPacket;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import udt.packets.Destination;
+import udt.packets.UDTSocketAddress;
+import udt.util.SequenceNumber;
 import udt.util.UDTStatistics;
 
 public abstract class UDTSession {
@@ -79,7 +83,7 @@ public abstract class UDTSession {
 	/**
 	 * remote UDT entity (address and socket ID)
 	 */
-	protected final Destination destination;
+	protected final UDTSocketAddress destination;
 	
 	/**
 	 * local port
@@ -101,16 +105,19 @@ public abstract class UDTSession {
 	 */
 	protected int datagramSize=DEFAULT_DATAGRAM_SIZE;
 	
-	protected Long initialSequenceNumber=null;
+	protected int initialSequenceNumber=11;
 	
-	protected final long mySocketID;
+        private final AtomicInteger sequenceNo =  new AtomicInteger(SequenceNumber.random());
 	
-	private final static AtomicLong nextSocketID=new AtomicLong(20+new Random().nextInt(5000));
+	protected final int mySocketID;
 	
-	public UDTSession(String description, Destination destination){
+	private final static AtomicInteger nextSocketID=new AtomicInteger(20+new Random().nextInt(5000));
+	
+	public UDTSession(String description, UDTSocketAddress dest){
+            InetSocketAddress inetAdd = null;
 		statistics=new UDTStatistics(description);
 		mySocketID=nextSocketID.incrementAndGet();
-		this.destination=destination;
+            this.destination= dest;
 		this.dgPacket=new DatagramPacket(new byte[0],0,destination.getAddress(),destination.getPort());
 		String clazzP=System.getProperty(CC_CLASS,UDTCongestionControl.class.getName());
 		Object ccObject=null;
@@ -125,9 +132,7 @@ public abstract class UDTSession {
 		logger.info("Using "+cc.getClass().getName());
 	}
 	
-	
-	public abstract void received(UDTPacket packet, Destination peer);
-	
+	public abstract void received(UDTPacket packet, UDTSocketAddress peer);
 	
 	public UDTSocket getSocket() {
 		return socket;
@@ -137,7 +142,7 @@ public abstract class UDTSession {
 		return cc;
 	}
 
-	public int getState() {
+	protected int getState() {
 		return state;
 	}
 
@@ -149,7 +154,7 @@ public abstract class UDTSession {
 		this.socket = socket;
 	}
 
-	public void setState(int state) {
+	protected void setState(int state) {
 		logger.info(toString()+" connection state CHANGED to <"+state+">");
 		this.state = state;
 	}
@@ -170,7 +175,7 @@ public abstract class UDTSession {
 		return state==shutdown || state==invalid;
 	}
 	
-	public Destination getDestination() {
+	public UDTSocketAddress getDestination() {
 		return destination;
 	}
 	
@@ -202,20 +207,29 @@ public abstract class UDTSession {
 		return statistics;
 	}
 
-	public long getSocketID(){
+	public int getSocketID(){
 		return mySocketID;
 	}
 
 	
-	public synchronized long getInitialSequenceNumber(){
-		if(initialSequenceNumber==null){
-			initialSequenceNumber=1l; //TODO must be random?
+	public int getCurrentSequenceNumber(){
+            return sequenceNo.get();
 		}
-		return initialSequenceNumber;
+        
+        public int incrementAndGetSequenceNo(){
+            while (true){
+                int sequence = sequenceNo.get();
+                int increment = SequenceNumber.increment(sequence);
+                boolean success = false;
+                success = sequenceNo.compareAndSet(sequence, increment);
+                if (success) return increment;
 	}
+        }
 	
-	public synchronized void setInitialSequenceNumber(long initialSequenceNumber){
-		this.initialSequenceNumber=initialSequenceNumber;
+	protected void setInitialSequenceNumber(int initialSequenceNumber){
+            if (state == handshaking){
+		sequenceNo.set(initialSequenceNumber);
+	}
 	}
 
 	public DatagramPacket getDatagram(){

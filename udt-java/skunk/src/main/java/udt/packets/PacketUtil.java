@@ -67,7 +67,7 @@ public class PacketUtil {
 	
 	
 	public static long decode(byte[]data, int start){
-		long result = (data[start]&0xFF)<<24
+		long result = (data[start]&0xFF)<<24 //multiply by 2^24
 		             | (data[start+1]&0xFF)<<16
 					 | (data[start+2]&0xFF)<<8
 					 | (data[start+3]&0xFF);

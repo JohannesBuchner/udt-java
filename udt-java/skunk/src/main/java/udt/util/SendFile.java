@@ -34,9 +34,11 @@ package udt.util;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -84,7 +86,7 @@ public class SendFile extends Application{
 			InetAddress myHost=localIP!=null?InetAddress.getByName(localIP):InetAddress.getLocalHost();
 			UDTServerSocket server=new UDTServerSocket(myHost,serverPort);
 			while(true){
-				UDTSocket socket=server.accept();
+				Socket socket=server.accept();
 				Thread.sleep(1000);
 				threadPool.execute(new RequestRunner(socket));
 			}
@@ -122,12 +124,12 @@ public class SendFile extends Application{
 
 		private final static Logger logger=Logger.getLogger(RequestRunner.class.getName());
 
-		private final UDTSocket socket;
+		private final Socket socket;
 
 		private final NumberFormat format=NumberFormat.getNumberInstance();
 
 		private final boolean memMapped;
-		public RequestRunner(UDTSocket socket){
+		public RequestRunner(Socket socket){
 			this.socket=socket;
 			format.setMaximumFractionDigits(3);
 			memMapped=false;//true;
@@ -135,9 +137,9 @@ public class SendFile extends Application{
 
 		public void run(){
 			try{
-				logger.info("Handling request from "+socket.getSession().getDestination());
-				UDTInputStream in=socket.getInputStream();
-				UDTOutputStream out=socket.getOutputStream();
+				logger.info("Handling request from "+ ((UDTSocket)socket).getSession().getDestination());
+				InputStream in=socket.getInputStream();
+				OutputStream out=socket.getOutputStream();
 				byte[]readBuf=new byte[32768];
 				ByteBuffer bb=ByteBuffer.wrap(readBuf);
 
@@ -181,17 +183,17 @@ public class SendFile extends Application{
 					}
 					System.out.println("[SendFile] Finished sending data.");
 					long end=System.currentTimeMillis();
-					System.out.println(socket.getSession().getStatistics().toString());
+					System.out.println(socket.toString());
 					double rate=1000.0*size/1024/1024/(end-start);
 					System.out.println("[SendFile] Rate: "+format.format(rate)+" MBytes/sec. "+format.format(8*rate)+" MBit/sec.");
 					if(Boolean.getBoolean("udt.sender.storeStatistics")){
-						socket.getSession().getStatistics().writeParameterHistory(new File("udtstats-"+System.currentTimeMillis()+".csv"));
+						((UDTSocket)socket).getSession().getStatistics().writeParameterHistory(new File("udtstats-"+System.currentTimeMillis()+".csv"));
 					}
 				}finally{
-					socket.getSender().stop();
+					((UDTSocket)socket).getSender().stop();
 					if(fis!=null)fis.close();
 				}
-				logger.info("Finished request from "+socket.getSession().getDestination());
+				logger.info("Finished request from "+((UDTSocket)socket).getSession().getDestination());
 			}catch(Exception ex){
 				ex.printStackTrace();
 				throw new RuntimeException(ex);

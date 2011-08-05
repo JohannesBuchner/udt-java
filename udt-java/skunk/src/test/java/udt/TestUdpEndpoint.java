@@ -5,7 +5,7 @@ import java.net.InetAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import udt.packets.Destination;
+import udt.packets.UDTSocketAddress;
 
 public class TestUdpEndpoint extends UDTTestBase{
 
@@ -14,7 +14,7 @@ public class TestUdpEndpoint extends UDTTestBase{
 		//select log level
 		Logger.getLogger("udt").setLevel(Level.INFO);
 		
-		UDPEndPoint server=new UDPEndPoint(InetAddress.getByName("localhost"),65322);
+		UDPEndPoint server= UDPEndPoint.get(InetAddress.getByName("localhost"),65322);
 		server.start();
 		UDTClient client=new UDTClient(InetAddress.getByName("localhost"),12346);
 		client.connect("localhost", 65322);
@@ -45,9 +45,10 @@ public class TestUdpEndpoint extends UDTTestBase{
 		Logger.getLogger("udt").setLevel(Level.WARNING);
 		System.out.println("Checking raw UDP send rate...");
 		InetAddress localhost=InetAddress.getByName("localhost");
-		UDPEndPoint endpoint=new UDPEndPoint(localhost,65322);
+		UDPEndPoint endpoint=UDPEndPoint.get(localhost,65322);
 		endpoint.start();
-		Destination d1=new Destination(localhost,12345);
+                int socketID = endpoint.getUniqueSocketID();
+		UDTSocketAddress d1=new UDTSocketAddress(localhost,12345,socketID);
 		int dataSize=UDTSession.DEFAULT_DATAGRAM_SIZE;
 		DatagramPacket p=new DatagramPacket(getRandomData(dataSize),dataSize,d1.getAddress(),d1.getPort());
 		int N=100000;
@@ -71,7 +72,7 @@ public class TestUdpEndpoint extends UDTTestBase{
 	}
 	
 	public void testBindToAnyPort()throws Exception{
-		UDPEndPoint ep=new UDPEndPoint(InetAddress.getByName("localhost"));
+		UDPEndPoint ep=UDPEndPoint.get(InetAddress.getByName("localhost"),0);
 		int port=ep.getLocalPort();
 		assertTrue(port>0);
 	}

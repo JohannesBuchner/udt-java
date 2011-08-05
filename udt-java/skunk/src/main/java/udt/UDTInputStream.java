@@ -66,10 +66,10 @@ public class UDTInputStream extends InputStream {
 	 * @param socket - the {@link UDTSocket}
 	 * @throws IOException
 	 */
-	public UDTInputStream(UDTSocket socket)throws IOException{
+	UDTInputStream(UDTSocket socket)throws IOException{
 		this.socket=socket;
 		int capacity=socket!=null? 2 * socket.getSession().getFlowWindowSize() : 128 ;
-		long initialSequenceNum=socket!=null?socket.getSession().getInitialSequenceNumber():1;
+		int initialSequenceNum=socket!=null?socket.getSession().getCurrentSequenceNumber():1;
 		receiveBuffer=new ReceiveBuffer(capacity,initialSequenceNum);
 	}
 

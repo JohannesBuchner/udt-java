@@ -36,9 +36,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.Socket;
 
-import udt.UDTOutputStream;
 import udt.UDTServerSocket;
 import udt.UDTSocket;
 import udt.packets.PacketUtil;
@@ -82,8 +83,8 @@ public class FufexSend {
 			writeToOut("OUT: "+localPort);
 			
 			//now start the send...
-			UDTSocket socket=server.accept();
-			UDTOutputStream out=socket.getOutputStream();
+			Socket socket=server.accept();
+			OutputStream out=socket.getOutputStream();
 			File file=new File(localFilename);
 			FileInputStream fis=new FileInputStream(file);
 			try{
@@ -95,7 +96,7 @@ public class FufexSend {
 				//and send the file
 				Util.copy(fis, out, size,true);
 				long end=System.currentTimeMillis();
-				System.out.println(socket.getSession().getStatistics());
+				System.out.println(((UDTSocket)socket).getSession().getStatistics());
 				float mbRate=1000*size/1024/1024/(end-start);
 				float mbitRate=8*mbRate;
 				System.out.println("Rate: "+(int)mbRate+" MBytes/sec. "+mbitRate+" mbit/sec.");

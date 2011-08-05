@@ -35,6 +35,7 @@ package udt.util;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.text.NumberFormat;
@@ -77,8 +78,8 @@ public class ReceiveFile extends Application{
 			InetAddress myHost=localIP!=null?InetAddress.getByName(localIP):InetAddress.getLocalHost();
 			UDTClient client=localPort!=-1?new UDTClient(myHost,localPort):new UDTClient(myHost);
 			client.connect(serverHost, serverPort);
-			UDTInputStream in=client.getInputStream();
-			UDTOutputStream out=client.getOutputStream();
+			InputStream in=client.getInputStream();
+			OutputStream out=client.getOutputStream();
 			
 			System.out.println("[ReceiveFile] Requesting file "+remoteFile);
 			byte[]fName=remoteFile.getBytes();
@@ -91,7 +92,7 @@ public class ReceiveFile extends Application{
 			out.write(nameinfo);
 			out.flush();
 			//pause the sender to save some CPU time
-			out.pauseOutput();
+			((UDTOutputStream) out).pauseOutput();
 			
 			//read size info (an 64 bit number) 
 			byte[]sizeInfo=new byte[8];

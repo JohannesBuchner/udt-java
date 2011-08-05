@@ -11,7 +11,8 @@ public class SequenceNumber {
 
 	private final static int maxOffset=0x3FFFFFFF;
 
-	private final static long maxSequenceNo=0x7FFFFFFF;
+//	private final static int maxSequenceNo=0x7FFFFFFF;
+        private final static int maxSequenceNo=Integer.MAX_VALUE; // 2^31-1
 
 
 	/**
@@ -51,7 +52,7 @@ public class SequenceNumber {
 	 * increment by one
 	 * @param seq
 	 */
-	public static long increment(long seq){
+	public static int increment(int seq){
 		return (seq == maxSequenceNo) ? 0 : seq + 1;
 	}
 
@@ -59,14 +60,14 @@ public class SequenceNumber {
 	 * decrement by one
 	 * @param seq
 	 */
-	public static long decrement(long seq){
+	public static int decrement(int seq){
 		return (seq == 0) ? maxSequenceNo : seq - 1;
 	}
 	
 	/**
 	 * generates a random number between 1 and 0x3FFFFFFF (inclusive)
 	 */
-	public static long random(){
+	public static int random(){
 		return 1+new Random().nextInt(maxOffset);
 	}
 	

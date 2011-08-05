@@ -55,7 +55,7 @@ public class ConnectionHandshake extends ControlPacket {
 	
 	private long connectionType = CONNECTION_TYPE_REGULAR;//regular or rendezvous mode
 	
-	private long socketID;
+	private int socketID;
 	
 	private long cookie=0;
 	
@@ -80,7 +80,7 @@ public class ConnectionHandshake extends ControlPacket {
 		packetSize=PacketUtil.decode(data, 12);
 		maxFlowWndSize=PacketUtil.decode(data, 16);
 		connectionType=PacketUtil.decode(data, 20);
-		socketID=PacketUtil.decode(data, 24);
+		socketID=(int) PacketUtil.decode(data, 24);
 		if(data.length>28){
 			cookie=PacketUtil.decode(data, 28);
 		}
@@ -128,10 +128,10 @@ public class ConnectionHandshake extends ControlPacket {
 		this.connectionType = connectionType;
 	}
 	
-	public long getSocketID() {
+	public int getSocketID() {
 		return socketID;
 	}
-	public void setSocketID(long socketID) {
+	public void setSocketID(int socketID) {
 		this.socketID = socketID;
 	}
 	

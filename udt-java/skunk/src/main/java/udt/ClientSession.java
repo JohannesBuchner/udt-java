@@ -38,7 +38,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import udt.packets.ConnectionHandshake;
-import udt.packets.Destination;
+import udt.packets.UDTSocketAddress;
 import udt.packets.Shutdown;
 import udt.util.SequenceNumber;
 
@@ -52,7 +52,7 @@ public class ClientSession extends UDTSession {
 
 	private UDPEndPoint endPoint;
 
-	public ClientSession(UDPEndPoint endPoint, Destination dest)throws SocketException{
+	public ClientSession(UDPEndPoint endPoint, UDTSocketAddress dest)throws SocketException{
 		super("ClientSession localPort="+endPoint.getLocalPort(),dest);
 		this.endPoint=endPoint;
 		logger.info("Created "+toString());
@@ -78,7 +78,7 @@ public class ClientSession extends UDTSession {
 	}
 
 	@Override
-	public void received(UDTPacket packet, Destination peer) {
+	public void received(UDTPacket packet, UDTSocketAddress peer) {
 
 		lastPacket=packet;
 
@@ -91,7 +91,7 @@ public class ClientSession extends UDTSession {
 				if(hs.getConnectionType()==1){
 					try{
 						//TODO validate parameters sent by peer
-						long peerSocketID=hs.getSocketID();
+						int peerSocketID=hs.getSocketID();
 						destination.setSocketID(peerSocketID);
 						sendConfirmation(hs);
 					}catch(Exception ex){
@@ -103,10 +103,12 @@ public class ClientSession extends UDTSession {
 				else{
 					try{
 						//TODO validate parameters sent by peer
-						long peerSocketID=hs.getSocketID();
+						int peerSocketID=hs.getSocketID();
 						destination.setSocketID(peerSocketID);
 						setState(ready);
+                                                if (socket == null){
 						socket=new UDTSocket(endPoint,this);		
+                                                }
 					}catch(Exception ex){
 						logger.log(Level.WARNING,"Error creating socket",ex);
 						setState(invalid);
@@ -146,9 +148,7 @@ public class ClientSession extends UDTSession {
 		ConnectionHandshake handshake = new ConnectionHandshake();
 		handshake.setConnectionType(ConnectionHandshake.CONNECTION_TYPE_REGULAR);
 		handshake.setSocketType(ConnectionHandshake.SOCKET_TYPE_DGRAM);
-		long initialSequenceNo=SequenceNumber.random();
-		setInitialSequenceNumber(initialSequenceNo);
-		handshake.setInitialSeqNo(initialSequenceNo);
+		handshake.setInitialSeqNo(getCurrentSequenceNumber());
 		handshake.setPacketSize(getDatagramSize());
 		handshake.setSocketID(mySocketID);
 		handshake.setMaxFlowWndSize(flowWindowSize);

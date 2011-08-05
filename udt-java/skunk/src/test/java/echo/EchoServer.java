@@ -3,9 +3,11 @@ package echo;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -41,7 +43,7 @@ public class EchoServer implements Runnable{
 		try{
 			started=true;
 			while(!stopped){
-				final UDTSocket socket=server.accept();
+				final Socket socket=server.accept();
 				pool.execute(new Request(socket));
 			}
 		}catch(Exception ex){
@@ -63,17 +65,17 @@ public class EchoServer implements Runnable{
 
 	public static class Request implements Runnable{
 
-		final UDTSocket socket;
+		final Socket socket;
 
-		public Request(UDTSocket socket){
+		public Request(Socket socket){
 			this.socket=socket;
 		}
 
 		public void run(){
 			try{
-				System.out.println("Processing request from <"+socket.getSession().getDestination()+">");
-				UDTInputStream in=socket.getInputStream();
-				UDTOutputStream out=socket.getOutputStream();
+				System.out.println("Processing request from <"+socket.getRemoteSocketAddress().toString()+">");
+				InputStream in=socket.getInputStream();
+				OutputStream out=socket.getOutputStream();
 				PrintWriter writer=new PrintWriter(new OutputStreamWriter(out));
 				String line=readLine(in);
 				if(line!=null){
@@ -82,7 +84,7 @@ public class EchoServer implements Runnable{
 					writer.println(line);
 					writer.flush();
 				}
-				System.out.println("Request from <"+socket.getSession().getDestination()+"> finished.");
+				System.out.println("Request from <"+socket.getRemoteSocketAddress().toString()+"> finished.");
 			}catch(Exception ex){
 				ex.printStackTrace();
 			}

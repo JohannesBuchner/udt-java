@@ -68,9 +68,7 @@ public class UDTSender {
 	private static final Logger logger=Logger.getLogger(UDTClient.class.getName());
 
 	private final UDPEndPoint endpoint;
-
 	private final UDTSession session;
-
 	private final UDTStatistics statistics;
 
 	//senderLossList stores the sequence numbers of lost packets
@@ -92,31 +90,31 @@ public class UDTSender {
 	private final AtomicInteger unacknowledged=new AtomicInteger(0);
 
 	//for generating data packet sequence numbers
-	private volatile long currentSequenceNumber=0;
+    //volatile long counters are not atomic.
+    //private volatile int currentSequenceNumber=0;
 
 	//the largest data packet sequence number that has actually been sent out
-	private volatile long largestSentSequenceNumber=-1;
+    private volatile int largestSentSequenceNumber=-1;
 
 	//last acknowledge number, initialised to the initial sequence number
-	private volatile long lastAckSequenceNumber;
+    private volatile int lastAckSequenceNumber;
 
 	private volatile boolean started=false;
-
 	private volatile boolean stopped=false;
-
 	private volatile boolean paused=false;
 
 	//used to signal that the sender should start to send
 	private volatile CountDownLatch startLatch=new CountDownLatch(1);
 
 	//used by the sender to wait for an ACK
-	private final AtomicReference<CountDownLatch> waitForAckLatch=new AtomicReference<CountDownLatch>();
+    private final AtomicReference<CountDownLatch> waitForAckLatch
+            =new AtomicReference<CountDownLatch>();
 
 	//used by the sender to wait for an ACK of a certain sequence number
-	private final AtomicReference<CountDownLatch> waitForSeqAckLatch=new AtomicReference<CountDownLatch>();
+    private final AtomicReference<CountDownLatch> waitForSeqAckLatch
+            =new AtomicReference<CountDownLatch>();
 
 	private final boolean storeStatistics;
-	
 	private final int chunksize;
 	
 	public UDTSender(UDTSession session,UDPEndPoint endpoint){
@@ -128,8 +126,8 @@ public class UDTSender {
 		sendBuffer=new ConcurrentHashMap<Long, byte[]>(session.getFlowWindowSize(),0.75f,2); 
 		chunksize=session.getDatagramSize()-24;//need space for the header;
 		flowWindow=new FlowWindow(session.getFlowWindowSize(),chunksize);
-		lastAckSequenceNumber=session.getInitialSequenceNumber();
-		currentSequenceNumber=session.getInitialSequenceNumber()-1;
+        lastAckSequenceNumber=session.getCurrentSequenceNumber();
+//		currentSequenceNumber=session.getCurrentSequenceNumber()-1;
 		waitForAckLatch.set(new CountDownLatch(1));
 		waitForSeqAckLatch.set(new CountDownLatch(1));
 		storeStatistics=Boolean.getBoolean("udt.sender.storeStatistics");
@@ -212,6 +210,7 @@ public class UDTSender {
 	protected void sendUdtPacket(ByteBuffer bb, int timeout, TimeUnit units)throws IOException, InterruptedException{
 		if(!started)start();
 		DataPacket packet=null;
+
 		do{
 			packet=flowWindow.getForProducer();
 			if(packet==null){
@@ -219,7 +218,7 @@ public class UDTSender {
 			}
 		}while(packet==null);//TODO check timeout...
 		try{
-			packet.setPacketSequenceNumber(getNextSequenceNumber());
+                    packet.setPacketSequenceNumber(incrementAndGetSequenceNo());
 			packet.setSession(session);
 			packet.setDestinationID(session.getDestination().getSocketID());
 			int len=Math.min(bb.remaining(),chunksize);
@@ -253,7 +252,7 @@ public class UDTSender {
 			}
 		}while(packet==null);
 		try{
-			packet.setPacketSequenceNumber(getNextSequenceNumber());
+                    packet.setPacketSequenceNumber(incrementAndGetSequenceNo());
 			packet.setSession(session);
 			packet.setDestinationID(session.getDestination().getSocketID());
 			packet.setData(data);
@@ -309,7 +308,7 @@ public class UDTSender {
 				unacknowledged.decrementAndGet();
 			}
 		}
-		lastAckSequenceNumber=Math.max(lastAckSequenceNumber, ackNumber);		
+            lastAckSequenceNumber=(int) Math.max(lastAckSequenceNumber, ackNumber);		
 		//send ACK2 packet to the receiver
 		sendAck2(ackNumber);
 		statistics.incNumberOfACKReceived();
@@ -362,22 +361,20 @@ public class UDTSender {
 			Long entry=senderLossList.getFirstEntry();
 			if(entry!=null){
 				handleRetransmit(entry);
-			}
-			else
-			{
+            }else{
 				//if the number of unacknowledged data packets does not exceed the congestion 
 				//and the flow window sizes, pack a new packet
 				int unAcknowledged=unacknowledged.get();
-
-				if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
-						&& unAcknowledged<session.getFlowWindowSize()){
+                if(unAcknowledged<session.getCongestionControl()
+                        .getCongestionWindowSize()
+                        && unAcknowledged<session.getFlowWindowSize())
+                {
 					//check for application data
 					DataPacket dp=flowWindow.consumeData();
 					if(dp!=null){
 						send(dp);
-						largestSentSequenceNumber=dp.getPacketSequenceNumber();
-					}
-					else{
+                        largestSentSequenceNumber=(int) dp.getPacketSequenceNumber();
+                    }else{
 						statistics.incNumberOfMissingDataEvents();
 					}
 				}else{
@@ -388,7 +385,6 @@ public class UDTSender {
 					waitForAck();
 				}
 			}
-
 			//wait
 			if(largestSentSequenceNumber % 16 !=0){
 				long snd=(long)session.getCongestionControl().getSendInterval();
@@ -445,13 +441,12 @@ public class UDTSender {
 	 * the next sequence number for data packets.
 	 * The initial sequence number is "0"
 	 */
-	public long getNextSequenceNumber(){
-		currentSequenceNumber=SequenceNumber.increment(currentSequenceNumber);
-		return currentSequenceNumber;
+    public int incrementAndGetSequenceNo(){
+            return session.incrementAndGetSequenceNo();
 	}
 
-	public long getCurrentSequenceNumber(){
-		return currentSequenceNumber;
+    public int getCurrentSequenceNumber(){
+            return session.getCurrentSequenceNumber();
 	}
 
 	/**
