@@ -2,13 +2,14 @@ package udt;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.logging.Logger;
 
 import udt.util.ReceiveFile;
 import udt.util.SendFile;
 import udt.util.UDTThreadFactory;
 
 public class TestSendFileReceiveFile extends UDTTestBase{
-
+	
 	volatile boolean serverStarted=false;
 	
 	public void test1()throws Exception{
