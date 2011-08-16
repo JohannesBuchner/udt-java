@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -115,14 +116,14 @@ public class UDTClient {
 	}
 
 	/**
-	 * flush outstanding data (and make sure it is acknowledged)
+	 * flush outstanding data, with the specified maximum waiting time
+	 * @param timeOut - timeout in millis (if smaller than 0, no timeout is used) 
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public void flush()throws IOException, InterruptedException{
+	public void flush()throws IOException, InterruptedException, TimeoutException{
 		clientSession.getSocket().flush();
 	}
-
 
 	public void shutdown()throws IOException{
 

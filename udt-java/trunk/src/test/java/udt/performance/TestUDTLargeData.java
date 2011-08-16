@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.text.NumberFormat;
 import java.util.Random;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,10 +22,10 @@ public class TestUDTLargeData extends UDTTestBase{
 	boolean running=false;
 
 	//how many
-	int num_packets=100;
+	int num_packets=500;
 	
 	//how large is a single packet
-	int size=1*1024*1024;
+	int size=20*1024*1024;
 	
 	int TIMEOUT=Integer.MAX_VALUE;
 	
@@ -36,7 +37,12 @@ public class TestUDTLargeData extends UDTTestBase{
 //		System.setProperty("udt.sender.storeStatistics","true");
 		UDTReceiver.dropRate=0;
 		TIMEOUT=Integer.MAX_VALUE;
-		doTest();
+		try{
+			doTest();
+		}catch(TimeoutException te){
+			te.printStackTrace();
+			fail();
+		}
 	}
 
 	private final NumberFormat format=NumberFormat.getNumberInstance();
@@ -59,6 +65,7 @@ public class TestUDTLargeData extends UDTTestBase{
 		long start=System.currentTimeMillis();
 		System.out.println("Sending <"+num_packets+"> packets of <"+format.format(size/1024.0/1024.0)+"> Mbytes each");
 		long end=0;
+		
 		if(serverRunning){
 			for(int i=0;i<num_packets;i++){
 				long block=System.currentTimeMillis();
