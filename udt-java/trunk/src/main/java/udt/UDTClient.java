@@ -85,10 +85,9 @@ public class UDTClient {
 		clientSession.connect();
 		//wait for handshake
 		while(!clientSession.isReady()){
-			Thread.sleep(500);
+			Thread.sleep(5);
 		}
 		logger.info("The UDTClient is connected");
-		Thread.sleep(500);
 	}
 
 	/**
