@@ -82,7 +82,7 @@ public class UDTInputStream extends InputStream {
 			b=read(single);
 
 		if(b>0){
-			return single[0];
+			return single[0] & 0xFF;
 		}
 		else {
 			return b;
