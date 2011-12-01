@@ -78,7 +78,7 @@ public class FlowWindow {
 			writePos++;
 			if(writePos==length)writePos=0;
 			validEntries++;
-			isFull=validEntries==length-1;
+			isFull=validEntries==length;
 			isEmpty=false;
 			produced++;
 		}finally{

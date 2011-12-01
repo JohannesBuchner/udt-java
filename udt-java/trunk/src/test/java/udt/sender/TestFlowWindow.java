@@ -110,9 +110,7 @@ public class TestFlowWindow extends TestCase {
 				while( (p=fw.consumeData())==null){
 					Thread.sleep(1);
 				}
-				synchronized (p) {
-					assertEquals(i,p.getMessageNumber());
-				}
+				assertEquals(i,p.getMessageNumber());
 			}	
 		}catch(Throwable ex){
 			ex.printStackTrace();
@@ -131,11 +129,9 @@ public class TestFlowWindow extends TestCase {
 				do{
 					p=fw.getForProducer();
 					if(p!=null){
-						synchronized(p){
-							p.setData(("test"+i).getBytes());
-							p.setMessageNumber(i);
-							fw.produce();
-						}
+						p.setData(("test"+i).getBytes());
+						p.setMessageNumber(i);
+						fw.produce();
 					}
 				}while(p==null);
 			}	

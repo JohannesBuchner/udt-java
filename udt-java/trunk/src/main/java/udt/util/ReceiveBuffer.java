@@ -120,7 +120,6 @@ public class ReceiveBuffer {
 			}
 			else return null;
 		}
-		numValidChunks.decrementAndGet();
 		return r;
 	}
 
