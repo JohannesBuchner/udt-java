@@ -1,5 +1,7 @@
 package udt.performance;
 
+import static org.junit.Assert.*;
+
 import java.io.File;
 import java.net.InetAddress;
 import java.security.MessageDigest;
@@ -8,6 +10,8 @@ import java.util.Random;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.junit.Test;
 
 import udt.UDTClient;
 import udt.UDTInputStream;
@@ -31,6 +35,7 @@ public class TestUDTLargeData extends UDTTestBase{
 	
 	int READ_BUFFERSIZE=1*1024*1024;
 
+	@Test
 	public void test1()throws Exception{
 		Logger.getLogger("udt").setLevel(Level.INFO);
 //		System.setProperty("udt.receiver.storeStatistics","true");

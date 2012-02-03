@@ -7,7 +7,8 @@ import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 
-import junit.framework.TestCase;
+import org.junit.Test;
+
 import udt.UDPEndPoint;
 import udt.packets.DataPacket;
 import udt.util.MeanValue;
@@ -15,11 +16,12 @@ import udt.util.MeanValue;
 /**
  * send some data over a UDP connection and measure performance
  */
-public class UDPTest extends TestCase {
+public class UDPTest {
 
 	final int num_packets=10*10*1000;
 	final int packetSize=UDPEndPoint.DATAGRAM_SIZE;
 
+	@Test
 	public void test1()throws Exception{
 		runServer();
 		runThirdThread();

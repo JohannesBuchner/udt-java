@@ -3,6 +3,8 @@ package udt.performance;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.junit.Test;
+
 import udt.UDTReceiver;
 import udt.UDTSession;
 import udt.cc.SimpleTCP;
@@ -22,6 +24,8 @@ public class TestUDTLargeDataCC1 extends TestUDTLargeData{
 	
 	int READ_BUFFERSIZE=1*1024*1024;
 
+	@Override
+	@Test
 	public void test1()throws Exception{
 		Logger.getLogger("udt").setLevel(Level.INFO);
 		UDTReceiver.dropRate=0;

@@ -1,12 +1,20 @@
 package udt.sender;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.concurrent.TimeoutException;
 
-import junit.framework.TestCase;
+import org.junit.Test;
+
 import udt.packets.DataPacket;
 
-public class TestFlowWindow extends TestCase {
+public class TestFlowWindow {
 
+	@Test
 	public void testFillWindow()throws InterruptedException, TimeoutException{
 		FlowWindow fw=new FlowWindow(3, 128);
 		DataPacket p1=fw.getForProducer();
@@ -38,6 +46,7 @@ public class TestFlowWindow extends TestCase {
 		assertTrue(fw.isEmpty());
 	}
 
+	@Test
 	public void testOverflow()throws InterruptedException, TimeoutException{
 		FlowWindow fw=new FlowWindow(3, 64);
 		DataPacket p1=fw.getForProducer();

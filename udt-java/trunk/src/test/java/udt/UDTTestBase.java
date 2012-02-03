@@ -7,12 +7,10 @@ import java.util.Random;
 
 import udt.util.Util;
 
-import junit.framework.TestCase;
-
 /**
  * some additional utilities useful for testing
  */
-public abstract class UDTTestBase extends TestCase{
+public abstract class UDTTestBase {
 	
 	//get an array filled with random data
 	protected byte[] getRandomData(int size){

@@ -6,17 +6,18 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
 
-import junit.framework.TestCase;
+import org.junit.Test;
 
 /**
  * send some data over a TCP connection and measure performance
  * 
  */
-public class TCPTest extends TestCase {
+public class TCPTest {
 	
 	int BUFSIZE=1024;
 	int num_packets=10*1000;
 
+	@Test
 	public void test1()throws Exception{
 		runServer();
 		//client socket
@@ -59,7 +60,7 @@ public class TCPTest extends TestCase {
 				}
 				catch(Exception e){
 					e.printStackTrace();
-					fail();
+					serverRunning=false;
 				}
 			}
 		};

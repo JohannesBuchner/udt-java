@@ -4,12 +4,16 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 
-import junit.framework.TestCase;
+import junit.framework.Assert;
+
+import org.junit.Test;
+
 import udt.UDTClient;
 import udt.util.Util;
 
-public class TestEchoServer extends TestCase {
+public class TestEchoServer {
 
+	@Test
 	public void test1()throws Exception{
 		EchoServer es=new EchoServer(65321);
 		es.start();
@@ -22,9 +26,9 @@ public class TestEchoServer extends TestCase {
 		System.out.println("Message sent.");
 		client.getInputStream().setBlocking(false);
 		String line=Util.readLine(client.getInputStream());
-		assertNotNull(line);
+		Assert.assertNotNull(line);
 		System.out.println(line);
-		assertEquals("test",line);
+		Assert.assertEquals("test",line);
 	}
 
 }

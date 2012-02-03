@@ -1,11 +1,15 @@
 package udt;
 
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
 import udt.receiver.ReceiverLossList;
 import udt.receiver.ReceiverLossListEntry;
-import junit.framework.TestCase;
 
-public class TestReceiverLossList extends TestCase {
+public class TestReceiverLossList {
 
+	@Test
 	public void test1(){
 		ReceiverLossList l=new ReceiverLossList();
 		ReceiverLossListEntry e1=new ReceiverLossListEntry(1);
