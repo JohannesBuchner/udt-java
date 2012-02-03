@@ -25,9 +25,9 @@ public class TestUDTServerSocket extends UDTTestBase{
 	
 	@Test
 	public void testWithoutLoss()throws Exception{
-		Logger.getLogger("udt").setLevel(Level.WARNING);
+		Logger.getLogger("udt").setLevel(Level.INFO);
 		UDTReceiver.dropRate=0;
-		num_packets=640;
+		num_packets=1000;
 		TIMEOUT=Integer.MAX_VALUE;
 		doTest();
 	}
@@ -37,9 +37,9 @@ public class TestUDTServerSocket extends UDTTestBase{
 	public void testWithLoss()throws Exception{
 		UDTReceiver.dropRate=3;
 		TIMEOUT=Integer.MAX_VALUE;
-		num_packets=512;
+		num_packets=100;
 		//set log level
-		Logger.getLogger("udt").setLevel(Level.WARNING);
+		Logger.getLogger("udt").setLevel(Level.INFO);
 		doTest();
 	}
 	
@@ -48,9 +48,9 @@ public class TestUDTServerSocket extends UDTTestBase{
 	public void testLargeDataSet()throws Exception{
 		UDTReceiver.dropRate=0;
 		TIMEOUT=Integer.MAX_VALUE;
-		num_packets=3*1024;
+		num_packets=100;
 		//set log level
-		Logger.getLogger("udt").setLevel(Level.WARNING);
+		Logger.getLogger("udt").setLevel(Level.INFO);
 		doTest();
 		
 	}

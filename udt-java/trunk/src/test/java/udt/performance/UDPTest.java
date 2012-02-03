@@ -6,6 +6,7 @@ import java.net.InetAddress;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
@@ -18,7 +19,7 @@ import udt.util.MeanValue;
  */
 public class UDPTest {
 
-	final int num_packets=10*10*1000;
+	final int num_packets=1000;
 	final int packetSize=UDPEndPoint.DATAGRAM_SIZE;
 
 	@Test
@@ -48,6 +49,7 @@ public class UDPTest {
 			dgSendInterval.end();
 			dgSendTime.begin();
 			s.send(dp);
+			Thread.sleep(5);
 			dgSendTime.end();
 			dgSendInterval.begin();
 		}
@@ -76,11 +78,10 @@ public class UDPTest {
 			public void run(){
 				try{
 					byte[]buf=new byte[packetSize];
-					DatagramPacket dp=new DatagramPacket(buf,buf.length);
 					while(true){
+						DatagramPacket dp=new DatagramPacket(buf,buf.length);
 						serverSocket.receive(dp);
 						handoff.offer(dp);
-						total+=dp.getLength();
 					}
 				}
 				catch(Exception e){
@@ -91,6 +92,7 @@ public class UDPTest {
 		};
 		Thread t=new Thread(serverProcess);
 		t.start();
+		System.out.println("Server started.");
 	}
 	
 	private final BlockingQueue<DatagramPacket> handoff=new SynchronousQueue<DatagramPacket>();
@@ -99,11 +101,15 @@ public class UDPTest {
 		Runnable serverProcess=new Runnable(){
 			public void run(){
 				try{
+					int counter=0;
 					long start=System.currentTimeMillis();
-					while(true){
-						DatagramPacket dp=handoff.poll();
-						if(dp!=null)total+=dp.getLength();
-						if(total==N)break;
+					while(counter<num_packets){
+						DatagramPacket dp=handoff.poll(10, TimeUnit.MILLISECONDS);
+						if(dp!=null){
+							total+=dp.getLength();
+							counter++;
+							System.out.println("Count: "+counter);
+						}
 					}
 					long end=System.currentTimeMillis();
 					System.out.println("Server time: "+(end-start)+" ms.");
@@ -117,6 +123,7 @@ public class UDPTest {
 		};
 		Thread t=new Thread(serverProcess);
 		t.start();
+		System.out.println("Hand-off thread started.");
 		
 	}
 

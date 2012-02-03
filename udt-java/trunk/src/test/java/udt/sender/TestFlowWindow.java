@@ -33,6 +33,7 @@ public class TestFlowWindow {
 
 		DataPacket no=fw.getForProducer();
 		assertNull("Window should be full",no);
+		assertTrue(fw.isFull());
 
 		DataPacket c1=fw.consumeData();
 		//must be p1
@@ -73,14 +74,21 @@ public class TestFlowWindow {
 		DataPacket p4=fw.getForProducer();
 		assertNotNull(p4);
 		fw.produce();
+		fw.consumeData();
+		
+		DataPacket p5=fw.getForProducer();
+		assertNotNull(p5);
+		fw.produce();
+		
 		//which is again p1
-		assertTrue(p4==p1);
+		assertTrue(p5==p1);
 
 	}
 
 	private volatile boolean fail=false;
 
-	public void testConcurrentReadWrite()throws InterruptedException{
+	@Test
+	public void testConcurrentReadWrite_20()throws InterruptedException{
 		final FlowWindow fw=new FlowWindow(20, 64);
 		Thread reader=new Thread(new Runnable(){
 			public void run(){
@@ -107,6 +115,34 @@ public class TestFlowWindow {
 
 	}
 
+	@Test
+	public void testConcurrentReadWrite_2()throws InterruptedException{
+		final FlowWindow fw=new FlowWindow(2, 64);
+		Thread reader=new Thread(new Runnable(){
+			public void run(){
+				doRead(fw);
+			}
+		});
+		reader.setName("reader");
+		Thread writer=new Thread(new Runnable(){
+			public void run(){
+				doWrite(fw);
+			}
+		});
+		writer.setName("writer");
+
+		writer.start();
+		reader.start();
+
+		int c=0;
+		while(read && write && c<10){
+			Thread.sleep(1000);
+			c++;
+		}
+		assertFalse("An error occured in reader or writer",fail);
+
+	}
+	
 	volatile boolean read=true;
 	volatile boolean write=true;
 	int N=100000;
@@ -123,6 +159,7 @@ public class TestFlowWindow {
 			}	
 		}catch(Throwable ex){
 			ex.printStackTrace();
+			System.out.println(fw);
 			fail=true;
 		}
 		System.out.println("Exiting reader...");
