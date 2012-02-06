@@ -78,7 +78,7 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 		return this.data;
 	}
 
-	public double getLength(){
+	public int getLength(){
 		return dataLength;
 	}
 

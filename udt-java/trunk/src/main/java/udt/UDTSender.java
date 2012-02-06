@@ -200,7 +200,11 @@ public class UDTSender {
 				throughput.end();
 				throughput.begin();
 			}
-			sendBuffer.put(p.getPacketSequenceNumber(), p.getData());
+			//store data for potential retransmit
+			int l=p.getLength();
+			byte[]data=new byte[l];
+			System.arraycopy(p.getData(), 0, data, 0, l);
+			sendBuffer.put(p.getPacketSequenceNumber(), data);
 			unacknowledged.incrementAndGet();
 		}
 		statistics.incNumberOfSentDataPackets();
