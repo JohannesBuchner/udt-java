@@ -196,7 +196,7 @@ public class UDPEndPoint {
 		return this.dgSocket.getLocalAddress();
 	}
 
-	DatagramSocket getSocket(){
+	public DatagramSocket getSocket(){
 		return dgSocket;
 	}
 
