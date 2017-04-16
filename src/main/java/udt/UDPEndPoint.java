@@ -1,22 +1,22 @@
 /*********************************************************************************
  * Copyright (c) 2010 Forschungszentrum Juelich GmbH 
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * (1) Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the disclaimer at the end. Redistributions in
  * binary form must reproduce the above copyright notice, this list of
  * conditions and the following disclaimer in the documentation and/or other
  * materials provided with the distribution.
- * 
+ *
  * (2) Neither the name of Forschungszentrum Juelich GmbH nor the names of its 
  * contributors may be used to endorse or promote products derived from this 
  * software without specific prior written permission.
- * 
+ *
  * DISCLAIMER
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -73,7 +73,7 @@ public class UDPEndPoint {
 	//if the endpoint is configured for a server socket,
 	//this queue is used to handoff new UDTSessions to the application
 	private final SynchronousQueue<UDTSession> sessionHandoff=new SynchronousQueue<UDTSession>();
-	
+
 	private boolean serverSocketMode=false;
 
 	//has the endpoint been stopped?
@@ -83,14 +83,14 @@ public class UDPEndPoint {
 
 	/**
 	 * create an endpoint on the given socket
-	 * 
+	 *
 	 * @param socket -  a UDP datagram socket
 	 */
 	public UDPEndPoint(DatagramSocket socket){
 		this.dgSocket=socket;
 		port=dgSocket.getLocalPort();
 	}
-	
+
 	/**
 	 * bind to any local port on the given host address
 	 * @param localAddress
@@ -116,7 +116,7 @@ public class UDPEndPoint {
 		}
 		if(localPort>0)this.port = localPort;
 		else port=dgSocket.getLocalPort();
-		
+
 		configureSocket();
 	}
 
@@ -127,10 +127,10 @@ public class UDPEndPoint {
 		dgSocket.setReceiveBufferSize(128*1024);
 		dgSocket.setReuseAddress(false);
 	}
-	
+
 	/**
 	 * bind to the default network interface on the machine
-	 * 
+	 *
 	 * @param localPort - the port to bind to. If the port is zero, the system will pick an ephemeral port.
 	 * @throws SocketException
 	 * @throws UnknownHostException
@@ -141,7 +141,7 @@ public class UDPEndPoint {
 
 	/**
 	 * bind to an ephemeral port on the default network interface on the machine
-	 * 
+	 *
 	 * @throws SocketException
 	 * @throws UnknownHostException
 	 */
@@ -234,27 +234,27 @@ public class UDPEndPoint {
 	/**
 	 * single receive, run in the receiverThread, see {@link #start()}
 	 * <ul>
-	 * <li>Receives UDP packets from the network</li> 
+	 * <li>Receives UDP packets from the network</li>
 	 * <li>Converts them to UDT packets</li>
 	 * <li>dispatches the UDT packets according to their destination ID.</li>
-	 * </ul> 
+	 * </ul>
 	 * @throws IOException
 	 */
 	private long lastDestID=-1;
 	private UDTSession lastSession;
-	
+
 	private int n=0;
-	
+
 	private final Object lock=new Object();
-	
+
 	protected void doReceive()throws IOException{
 		while(!stopped){
 			try{
 				try{
-					
+
 					//will block until a packet is received or timeout has expired
 					dgSocket.receive(dp);
-					
+
 					Destination peer=new Destination(dp.getAddress(), dp.getPort());
 					int l=dp.getLength();
 					UDTPacket packet=PacketFactory.createPacket(dp.getData(),l);
