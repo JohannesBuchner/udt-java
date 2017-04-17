@@ -39,7 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -110,10 +111,8 @@ public class UDTSender {
 	private volatile CountDownLatch startLatch=new CountDownLatch(1);
 
 	//used by the sender to wait for an ACK
-	private final AtomicReference<CountDownLatch> waitForAckLatch=new AtomicReference<CountDownLatch>();
-
-	//used by the sender to wait for an ACK of a certain sequence number
-	private final AtomicReference<CountDownLatch> waitForSeqAckLatch=new AtomicReference<CountDownLatch>();
+	private final ReentrantLock ackLock=new ReentrantLock();
+	private final Condition ackCondition=ackLock.newCondition();
 
 	private final boolean storeStatistics;
 	
@@ -130,8 +129,6 @@ public class UDTSender {
 		flowWindow=new FlowWindow(session.getFlowWindowSize(),chunksize);
 		lastAckSequenceNumber=session.getInitialSequenceNumber();
 		currentSequenceNumber=session.getInitialSequenceNumber()-1;
-		waitForAckLatch.set(new CountDownLatch(1));
-		waitForSeqAckLatch.set(new CountDownLatch(1));
 		storeStatistics=Boolean.getBoolean("udt.sender.storeStatistics");
 		initMetrics();
 		doStart();
@@ -203,7 +200,11 @@ public class UDTSender {
 				throughput.end();
 				throughput.begin();
 			}
-			sendBuffer.put(p.getPacketSequenceNumber(), p.getData());
+			//store data for potential retransmit
+			int l=p.getLength();
+			byte[]data=new byte[l];
+			System.arraycopy(p.getData(), 0, data, 0, l);
+			sendBuffer.put(p.getPacketSequenceNumber(), data);
 			unacknowledged.incrementAndGet();
 		}
 		statistics.incNumberOfSentDataPackets();
@@ -278,8 +279,9 @@ public class UDTSender {
 	}
 
 	protected void onAcknowledge(Acknowledgement acknowledgement)throws IOException{
-		waitForAckLatch.get().countDown();
-		waitForSeqAckLatch.get().countDown();
+		ackLock.lock();
+		ackCondition.signal();
+		ackLock.unlock();
 
 		CongestionControl cc=session.getCongestionControl();
 		long rtt=acknowledgement.getRoundTripTime();
@@ -407,6 +409,8 @@ public class UDTSender {
 		}
 	}
 
+	private final DataPacket retransmit=new DataPacket();
+	
 	/**
 	 * re-transmit an entry from the sender loss list
 	 * @param entry
@@ -416,13 +420,11 @@ public class UDTSender {
 			//retransmit the packet and remove it from  the list
 			byte[]data=sendBuffer.get(seqNumber);
 			if(data!=null){
-				//System.out.println("re-transmit "+data);
-				DataPacket packet=new DataPacket();
-				packet.setPacketSequenceNumber(seqNumber);
-				packet.setSession(session);
-				packet.setDestinationID(session.getDestination().getSocketID());
-				packet.setData(data);
-				endpoint.doSend(packet);
+				retransmit.setPacketSequenceNumber(seqNumber);
+				retransmit.setSession(session);
+				retransmit.setDestinationID(session.getDestination().getSocketID());
+				retransmit.setData(data);
+				endpoint.doSend(retransmit);
 				statistics.incNumberOfRetransmittedDataPackets();
 			}
 		}catch (Exception e) {
@@ -486,18 +488,37 @@ public class UDTSender {
 	 */
 	public void waitForAck(long sequenceNumber)throws InterruptedException{
 		while(!session.isShutdown() && !haveAcknowledgementFor(sequenceNumber)){
-			waitForSeqAckLatch.set(new CountDownLatch(1));
-			waitForSeqAckLatch.get().await(10, TimeUnit.MILLISECONDS);
+			ackLock.lock();
+			try{
+				ackCondition.await(100, TimeUnit.MICROSECONDS);
+			}finally{
+				ackLock.unlock();
+			}
 		}
 	}
 
+	public void waitForAck(long sequenceNumber, int timeout)throws InterruptedException{
+		while(!session.isShutdown() && !haveAcknowledgementFor(sequenceNumber)){
+			ackLock.lock();
+			try{
+				ackCondition.await(timeout, TimeUnit.MILLISECONDS);
+			}finally{
+				ackLock.unlock();
+			}
+		}
+	}
+	
 	/**
 	 * wait for the next acknowledge
 	 * @throws InterruptedException
 	 */
 	public void waitForAck()throws InterruptedException{
-		waitForAckLatch.set(new CountDownLatch(1));
-		waitForAckLatch.get().await(200, TimeUnit.MICROSECONDS);
+		ackLock.lock();
+		try{
+			ackCondition.await(200, TimeUnit.MICROSECONDS);
+		}finally{
+			ackLock.unlock();
+		}
 	}
 
 

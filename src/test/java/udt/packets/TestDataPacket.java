@@ -1,10 +1,11 @@
 package udt.packets;
 
-import junit.framework.TestCase;
-import udt.packets.DataPacket;
+import static org.junit.Assert.assertEquals;
 
-public class TestDataPacket extends TestCase {
+import org.junit.Test;
+public class TestDataPacket {
 
+	@Test
 	public void testSequenceNumber1(){
 		DataPacket p=new DataPacket();
 		p.setPacketSequenceNumber(1);
@@ -17,6 +18,7 @@ public class TestDataPacket extends TestCase {
 		assertEquals(1, lowest);
 	}
 
+	@Test
 	public void testEncoded(){
 		DataPacket p=new DataPacket();
 		p.setPacketSequenceNumber(1);
@@ -30,9 +32,9 @@ public class TestDataPacket extends TestCase {
 		System.out.println("String s = " + s);
 	}
 
-
+	
+	@Test
 	public void testDecode1(){
-
 		DataPacket testPacket1=new DataPacket();
 		testPacket1.setPacketSequenceNumber(127);
 		testPacket1.setDestinationID(1);
@@ -74,6 +76,7 @@ public class TestDataPacket extends TestCase {
 
 	}
 
+	@Test
 	public void testEncodeDecode1(){
 		DataPacket dp=new DataPacket();
 		dp.setPacketSequenceNumber(127);

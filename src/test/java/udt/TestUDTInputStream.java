@@ -6,10 +6,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 
+import junit.framework.Assert;
+
+import org.junit.Test;
+
 import udt.util.Util;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TestUDTInputStream extends UDTTestBase{
 
+	@Test
 	public void test1()throws Exception{
 		UDTInputStream is=new UDTInputStream(null);
 		byte[] data1="this is ".getBytes();
@@ -25,6 +32,7 @@ public class TestUDTInputStream extends UDTTestBase{
 		assertEquals(digest,readMD5);
 	}
 	
+	@Test
 	public void test2()throws Exception{
 		UDTInputStream is=new UDTInputStream(null);
 		byte[] data1=getRandomData(65537);
@@ -40,6 +48,7 @@ public class TestUDTInputStream extends UDTTestBase{
 		assertEquals(digest,readMD5);
 	}
 	
+	@Test
 	public void testInOrder()throws Exception{
 		UDTInputStream is=new UDTInputStream(null);
 		is.setBlocking(false);
@@ -57,6 +66,7 @@ public class TestUDTInputStream extends UDTTestBase{
 		assertEquals(digest,readMD5);
 	}
 	
+	@Test
 	public void testRandomOrder()throws Exception{
 		UDTInputStream is=new UDTInputStream(null);
 		is.setBlocking(false);
@@ -76,7 +86,7 @@ public class TestUDTInputStream extends UDTTestBase{
 	}
 	
 	
-	
+	@Test
 	public void testLargeDataSetTwoThreads()throws Exception{
 		final UDTInputStream is=new UDTInputStream(null);
 		is.setBlocking(false);
@@ -98,7 +108,7 @@ public class TestUDTInputStream extends UDTTestBase{
 					is.noMoreData();
 				}catch(Exception e){
 					e.printStackTrace();
-					fail();
+					Assert.fail();
 				}
 			}
 		};

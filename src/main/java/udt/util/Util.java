@@ -86,7 +86,8 @@ public class Util {
 	 * @throws IOException
 	 */
 	public static String readLine(InputStream input)throws IOException{
-		return readLine(input, '\n');
+		char term=System.getProperty("line.separator").charAt(0);
+		return readLine(input, term);
 	}
 	
 	/**

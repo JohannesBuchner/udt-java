@@ -61,7 +61,6 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 
 	public DataPacket(byte[] encodedData, int length){
 		decode(encodedData,length);
-		dataLength=length;
 	}
 	
 	void decode(byte[]encodedData,int length){
@@ -69,8 +68,9 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 		messageNumber=PacketUtil.decode(encodedData, 4);
 		timeStamp=PacketUtil.decode(encodedData, 8);
 		destinationID=PacketUtil.decode(encodedData, 12);
-		data=new byte[length-16];
-		System.arraycopy(encodedData, 16, data, 0, data.length);
+		dataLength=length-16;
+		data=new byte[dataLength];
+		System.arraycopy(encodedData, 16, data, 0, dataLength);
 	}
 
 
@@ -78,7 +78,7 @@ public class DataPacket implements UDTPacket, Comparable<UDTPacket>{
 		return this.data;
 	}
 
-	public double getLength(){
+	public int getLength(){
 		return dataLength;
 	}
 

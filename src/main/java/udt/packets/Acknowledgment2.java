@@ -61,16 +61,16 @@ public class Acknowledgment2 extends ControlPacket{
 	}
 	 
 	void decode(byte[]data){
+		ackSequenceNumber=PacketUtil.decode(data, 0);
 	}
 
 	public boolean forSender(){
 		return false;
 	}
 
-	private static final byte[]empty=new byte[0];
 	@Override
 	public byte[] encodeControlInformation(){
-		return empty;
+		return PacketUtil.encode(ackSequenceNumber);
 	}
 }
 

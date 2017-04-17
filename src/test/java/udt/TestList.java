@@ -1,8 +1,13 @@
 package udt;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 
-import junit.framework.TestCase;
+import org.junit.Test;
+
 import udt.packets.DataPacket;
 import udt.packets.KeepAlive;
 import udt.receiver.AckHistoryEntry;
@@ -15,8 +20,9 @@ import udt.util.CircularArray;
 /*
  * tests for the various list and queue classes
  */
-public class TestList extends TestCase{
+public class TestList {
 
+	@Test
 	public void testCircularArray(){
 		CircularArray<Integer>c=new CircularArray<Integer>(5);
 		for(int i=0;i<5;i++)c.add(i);
@@ -50,14 +56,14 @@ public class TestList extends TestCase{
 		for(int i=0;i<values.length;i++){
 			p.add(values[i]);
 		}
-		assertEquals(4.0d, p.computeMedianTimeInterval());
+		assertEquals(4.0d, p.computeMedianTimeInterval(), 0.001d);
 		
 		long[] arrivaltimes = {12, 12, 12, 12};
 		PacketPairWindow p1=new PacketPairWindow(16);
 		for(int i=0;i<values.length;i++){
 			p1.add(arrivaltimes[i]);
 		}
-		assertEquals(12.0d, p1.computeMedianTimeInterval());
+		assertEquals(12.0d, p1.computeMedianTimeInterval(), 0.001d);
 		
 	}
 	

@@ -1,18 +1,22 @@
 package udt.packets;
 
-import udt.packets.ControlPacket;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
 import udt.packets.ControlPacket.ControlPacketType;
-import junit.framework.TestCase;
 
-public class TestControlPacketType extends TestCase {
+public class TestControlPacketType {
 
+	@Test
 	public void testSequenceNumber1(){
 		ControlPacket p=new DummyControlPacket();
 		byte[]x=p.getHeader();
 		byte highest=x[0];
 		assertEquals(128, highest & 0x80);
 	}
-	
+
+	@Test
 	public void testControlPacketTypes(){
 		ControlPacketType t=ControlPacketType.CONNECTION_HANDSHAKE;
 		assertEquals(0,t.ordinal());

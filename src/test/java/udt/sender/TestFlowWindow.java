@@ -1,12 +1,20 @@
 package udt.sender;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.concurrent.TimeoutException;
 
-import junit.framework.TestCase;
+import org.junit.Test;
+
 import udt.packets.DataPacket;
 
-public class TestFlowWindow extends TestCase {
+public class TestFlowWindow {
 
+	@Test
 	public void testFillWindow()throws InterruptedException, TimeoutException{
 		FlowWindow fw=new FlowWindow(3, 128);
 		DataPacket p1=fw.getForProducer();
@@ -25,6 +33,7 @@ public class TestFlowWindow extends TestCase {
 
 		DataPacket no=fw.getForProducer();
 		assertNull("Window should be full",no);
+		assertTrue(fw.isFull());
 
 		DataPacket c1=fw.consumeData();
 		//must be p1
@@ -38,6 +47,7 @@ public class TestFlowWindow extends TestCase {
 		assertTrue(fw.isEmpty());
 	}
 
+	@Test
 	public void testOverflow()throws InterruptedException, TimeoutException{
 		FlowWindow fw=new FlowWindow(3, 64);
 		DataPacket p1=fw.getForProducer();
@@ -64,14 +74,21 @@ public class TestFlowWindow extends TestCase {
 		DataPacket p4=fw.getForProducer();
 		assertNotNull(p4);
 		fw.produce();
+		fw.consumeData();
+		
+		DataPacket p5=fw.getForProducer();
+		assertNotNull(p5);
+		fw.produce();
+		
 		//which is again p1
-		assertTrue(p4==p1);
+		assertTrue(p5==p1);
 
 	}
 
 	private volatile boolean fail=false;
 
-	public void testConcurrentReadWrite()throws InterruptedException{
+	@Test
+	public void testConcurrentReadWrite_20()throws InterruptedException{
 		final FlowWindow fw=new FlowWindow(20, 64);
 		Thread reader=new Thread(new Runnable(){
 			public void run(){
@@ -98,6 +115,34 @@ public class TestFlowWindow extends TestCase {
 
 	}
 
+	@Test
+	public void testConcurrentReadWrite_2()throws InterruptedException{
+		final FlowWindow fw=new FlowWindow(2, 64);
+		Thread reader=new Thread(new Runnable(){
+			public void run(){
+				doRead(fw);
+			}
+		});
+		reader.setName("reader");
+		Thread writer=new Thread(new Runnable(){
+			public void run(){
+				doWrite(fw);
+			}
+		});
+		writer.setName("writer");
+
+		writer.start();
+		reader.start();
+
+		int c=0;
+		while(read && write && c<10){
+			Thread.sleep(1000);
+			c++;
+		}
+		assertFalse("An error occured in reader or writer",fail);
+
+	}
+	
 	volatile boolean read=true;
 	volatile boolean write=true;
 	int N=100000;
@@ -110,12 +155,11 @@ public class TestFlowWindow extends TestCase {
 				while( (p=fw.consumeData())==null){
 					Thread.sleep(1);
 				}
-				synchronized (p) {
-					assertEquals(i,p.getMessageNumber());
-				}
+				assertEquals(i,p.getMessageNumber());
 			}	
 		}catch(Throwable ex){
 			ex.printStackTrace();
+			System.out.println(fw);
 			fail=true;
 		}
 		System.out.println("Exiting reader...");
@@ -131,11 +175,9 @@ public class TestFlowWindow extends TestCase {
 				do{
 					p=fw.getForProducer();
 					if(p!=null){
-						synchronized(p){
-							p.setData(("test"+i).getBytes());
-							p.setMessageNumber(i);
-							fw.produce();
-						}
+						p.setData(("test"+i).getBytes());
+						p.setMessageNumber(i);
+						fw.produce();
 					}
 				}while(p==null);
 			}	

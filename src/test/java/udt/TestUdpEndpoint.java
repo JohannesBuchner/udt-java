@@ -1,14 +1,20 @@
 package udt;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.junit.Test;
+
 import udt.packets.Destination;
 
 public class TestUdpEndpoint extends UDTTestBase{
 
+	@Test
 	public void testClientServerMode()throws Exception{
 
 		//select log level
@@ -41,6 +47,7 @@ public class TestUdpEndpoint extends UDTTestBase{
 	 * just check how fast we can send out UDP packets from the endpoint
 	 * @throws Exception
 	 */
+	@Test
 	public void testRawSendRate()throws Exception{
 		Logger.getLogger("udt").setLevel(Level.WARNING);
 		System.out.println("Checking raw UDP send rate...");
@@ -65,11 +72,12 @@ public class TestUdpEndpoint extends UDTTestBase{
 		Thread.sleep(1000);
 	}
 	
-	//no rendezvous yet...
-	public void x_testRendezvousConnect()throws Exception{
+	//@Test()
+	public void testRendezvousConnect()throws Exception{
 	
 	}
 	
+	@Test
 	public void testBindToAnyPort()throws Exception{
 		UDPEndPoint ep=new UDPEndPoint(InetAddress.getByName("localhost"));
 		int port=ep.getLocalPort();

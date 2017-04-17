@@ -54,15 +54,7 @@ public class UDTServerSocket {
 	 * @param port - the local port. If 0, an ephemeral port will be chosen
 	 */
 	public UDTServerSocket(InetAddress localAddress, int port)throws SocketException,UnknownHostException{
-		this(new UDPEndPoint(localAddress,port));
-	}
-	/**
-	 * create a UDT ServerSocket
-	 * @param localAddress
-	 * @param port - the local port. If 0, an ephemeral port will be chosen
-	 */
-	public UDTServerSocket(UDPEndPoint endpoint) {
-		this.endpoint=endpoint;
+		endpoint=new UDPEndPoint(localAddress,port);
 		logger.info("Created server endpoint on port "+endpoint.getLocalPort());
 	}
 

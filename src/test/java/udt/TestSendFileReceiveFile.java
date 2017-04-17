@@ -1,7 +1,11 @@
 package udt;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.File;
 import java.io.FileInputStream;
+
+import org.junit.Test;
 
 import udt.util.ReceiveFile;
 import udt.util.SendFile;
@@ -11,6 +15,7 @@ public class TestSendFileReceiveFile extends UDTTestBase{
 
 	volatile boolean serverStarted=false;
 	
+	@Test
 	public void test1()throws Exception{
 		runServer();
 		do{

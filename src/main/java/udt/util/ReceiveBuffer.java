@@ -54,7 +54,7 @@ public class ReceiveBuffer {
 		try{
 			long seq=data.getSequenceNumber();
 			//if already have this chunk, discard it
-			if(SequenceNumber.compare(seq, initialSequenceNumber)<0)return true;
+			if(SequenceNumber.compare(seq, highestReadSequenceNumber)<=0)return true;
 			//else compute insert position
 			int offset=(int)SequenceNumber.seqOffset(initialSequenceNumber, seq);
 			int insert=offset% size;

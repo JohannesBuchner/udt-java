@@ -1,10 +1,15 @@
 package udt;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.junit.Test;
 
 import udt.util.Util;
 
@@ -18,31 +23,34 @@ public class TestUDTServerSocket extends UDTTestBase{
 
 	int TIMEOUT=20000;
 	
+	@Test
 	public void testWithoutLoss()throws Exception{
-		Logger.getLogger("udt").setLevel(Level.WARNING);
+		Logger.getLogger("udt").setLevel(Level.INFO);
 		UDTReceiver.dropRate=0;
-		num_packets=640;
+		num_packets=1000;
 		TIMEOUT=Integer.MAX_VALUE;
 		doTest();
 	}
 
 	//set an artificial loss rate
+	@Test
 	public void testWithLoss()throws Exception{
 		UDTReceiver.dropRate=3;
 		TIMEOUT=Integer.MAX_VALUE;
-		num_packets=512;
+		num_packets=100;
 		//set log level
-		Logger.getLogger("udt").setLevel(Level.WARNING);
+		Logger.getLogger("udt").setLevel(Level.INFO);
 		doTest();
 	}
 	
 	//send even more data
+	@Test
 	public void testLargeDataSet()throws Exception{
 		UDTReceiver.dropRate=0;
 		TIMEOUT=Integer.MAX_VALUE;
-		num_packets=3*1024;
+		num_packets=100;
 		//set log level
-		Logger.getLogger("udt").setLevel(Level.WARNING);
+		Logger.getLogger("udt").setLevel(Level.INFO);
 		doTest();
 		
 	}
@@ -97,6 +105,7 @@ public class TestUDTServerSocket extends UDTTestBase{
 		Runnable serverProcess=new Runnable(){
 			public void run(){
 				try{
+					System.out.println("Starting server.");
 					long start=System.currentTimeMillis();
 					UDTSocket s=serverSocket.accept();
 					assertNotNull(s);
@@ -121,7 +130,6 @@ public class TestUDTServerSocket extends UDTTestBase{
 				}
 				catch(Exception e){
 					e.printStackTrace();
-					fail();
 					serverRunning=false;
 				}
 			}
